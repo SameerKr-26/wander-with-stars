@@ -16,7 +16,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "verify": "npm run typecheck && npm run lint && npm run format:check",
-    "db:types": "supabase gen types typescript --project-id \"$SUPABASE_PROJECT_ID\" --schema public > lib/supabase/database.types.ts"
+    "db:types": "supabase gen types typescript --linked --schema public > lib/supabase/database.types.ts",
+    "db:push": "supabase db push",
+    "db:diff": "supabase db diff"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
@@ -39,6 +41,7 @@
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.9.6",
     "prettier-plugin-tailwindcss": "^0.8.1",
+    "supabase": "^2.117.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3"
   }
