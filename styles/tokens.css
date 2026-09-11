@@ -1,0 +1,220 @@
+/* ===========================================================================
+ * WWS DESIGN TOKENS — INFRASTRUCTURE ONLY
+ *
+ * ⚠️  NONE OF THESE VALUES ARE FINAL. NONE OF THEM ARE BRAND DECISIONS.
+ *
+ * This file exists so that, when the product owner defines the visual
+ * direction, there is exactly ONE place to change it — and every component
+ * built afterwards inherits that change for free. It establishes the
+ * mechanism, not the aesthetics.
+ *
+ * The token NAMES come from docs/DESIGN_SYSTEM.md §3 and docs/MOTION_SYSTEM.md
+ * §3–4, so the vocabulary matches the documents already agreed.
+ *
+ * The token VALUES fall into three groups, marked inline:
+ *
+ *   PLACEHOLDER  — a neutral stand-in chosen only so the app renders legibly.
+ *                  Carries no brand intent. Every one of these is expected to
+ *                  be replaced.
+ *   FROM DOCS    — transcribed from a scale already written down in the
+ *                  documents. Still subject to confirmation.
+ *   TODO         — deliberately left unset. Choosing a value here would be an
+ *                  aesthetic decision that is not mine to make.
+ *
+ * Rule for anyone building components before the design session:
+ * reference the token, never a literal. A component written against
+ * var(--color-surface) survives the design direction landing. One written
+ * against #ffffff does not.
+ * ======================================================================== */
+
+:root {
+  /* -----------------------------------------------------------------------
+   * COLOUR — semantic roles
+   *
+   * PLACEHOLDER: pure neutrals only. No hue has been chosen, because no hue
+   * has been decided. Greys here are intentionally uncommitted — they are not
+   * a "neutral palette" in the design sense, just legible defaults.
+   * -------------------------------------------------------------------- */
+
+  --color-background: #ffffff; /* PLACEHOLDER */
+  --color-background-secondary: #f4f4f5; /* PLACEHOLDER */
+
+  --color-surface: #ffffff; /* PLACEHOLDER */
+  --color-surface-elevated: #ffffff; /* PLACEHOLDER */
+
+  --color-text-primary: #18181b; /* PLACEHOLDER */
+  --color-text-secondary: #3f3f46; /* PLACEHOLDER */
+  --color-text-muted: #71717a; /* PLACEHOLDER */
+
+  --color-border: #e4e4e7; /* PLACEHOLDER — alias of border-subtle */
+  --color-border-subtle: #e4e4e7; /* PLACEHOLDER */
+  --color-border-strong: #d4d4d8; /* PLACEHOLDER */
+
+  /* TODO — brand accent. Deliberately uncommitted: currentColor inherits
+     rather than asserting a hue, so nothing accidentally ships looking
+     "designed" before the direction exists. */
+  --color-accent: currentColor;
+  --color-accent-soft: transparent;
+
+  /* TODO — status colours. Functional rather than brand, but they still need
+     to sit correctly against the final palette and meet contrast targets
+     (docs/DESIGN_SYSTEM.md §19), so they are set with the rest. */
+  --color-success: currentColor;
+  --color-warning: currentColor;
+  --color-error: currentColor;
+
+  /* -----------------------------------------------------------------------
+   * SURFACE / GLASS — docs/DESIGN_SYSTEM.md §9
+   *
+   * TODO: three glass levels are specified by name. Their translucency and
+   * blur are explicitly the product owner's call, so they resolve to a plain
+   * surface for now. Components may reference them today; they will simply
+   * look solid until the values land.
+   * -------------------------------------------------------------------- */
+
+  --color-surface-glass: var(--color-surface); /* TODO — alias of glass-1 */
+  --color-surface-glass-1: var(--color-surface); /* TODO */
+  --color-surface-glass-2: var(--color-surface); /* TODO */
+  --color-surface-glass-3: var(--color-surface); /* TODO */
+
+  --blur-glass-1: 0; /* TODO */
+  --blur-glass-2: 0; /* TODO */
+  --blur-glass-3: 0; /* TODO */
+
+  /* -----------------------------------------------------------------------
+   * ELEVATION — docs/DESIGN_SYSTEM.md §10
+   *
+   * TODO: four semantic levels, values unset. "Avoid glow everywhere" is a
+   * stated principle, so these need designing as a set rather than per
+   * component.
+   * -------------------------------------------------------------------- */
+
+  --shadow-sm: none; /* TODO */
+  --shadow-md: none; /* TODO */
+  --shadow-lg: none; /* TODO */
+  --shadow-xl: none; /* TODO */
+
+  /* -----------------------------------------------------------------------
+   * TYPOGRAPHY
+   *
+   * TODO: typeface and weight system are a design-session decision
+   * (docs/DESIGN_SYSTEM.md §4). The system stack below is a functional
+   * fallback so text renders — it is not a typographic choice.
+   * -------------------------------------------------------------------- */
+
+  --font-display:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; /* TODO */
+  --font-body:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; /* TODO */
+  --font-mono: ui-monospace, 'Cascadia Mono', 'Segoe UI Mono', Consolas, monospace; /* TODO */
+
+  /* TODO — the type scale itself (sizes, line heights, tracking) is defined in
+     the design session. No scale is asserted here on purpose: a half-chosen
+     scale is harder to replace than none. */
+
+  /* -----------------------------------------------------------------------
+   * SPACING — FROM DOCS, docs/DESIGN_SYSTEM.md §7
+   *
+   * Transcribed from the agreed scale: 4 / 8 / 12 / 16 / 20 / 24 / 32 / 40 /
+   * 48 / 64 / 80 / 96 / 128. Subject to confirmation, but this is a recorded
+   * decision rather than an invented one.
+   * -------------------------------------------------------------------- */
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+  --space-32: 128px;
+
+  /* -----------------------------------------------------------------------
+   * RADIUS — FROM DOCS, docs/DESIGN_SYSTEM.md §8
+   * -------------------------------------------------------------------- */
+
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+
+  /* -----------------------------------------------------------------------
+   * MOTION — FROM DOCS, docs/MOTION_SYSTEM.md §3–4
+   *
+   * The documents specify ranges rather than single values. The midpoint of
+   * each range is used as a provisional default so components have something
+   * consistent to reference; the final value per tier is confirmed in the
+   * design session. The ranges are kept in the comments so nothing is lost.
+   * -------------------------------------------------------------------- */
+
+  --duration-micro: 150ms; /* range 120–180ms */
+  --duration-standard: 210ms; /* range 180–240ms */
+  --duration-card: 270ms; /* range 220–320ms */
+  --duration-modal: 325ms; /* range 250–400ms */
+  --duration-reveal: 550ms; /* range 400–700ms */
+  --duration-hero: 950ms; /* range 700–1200ms */
+
+  --ease-standard: ease-out; /* FROM DOCS §4 */
+  --ease-smooth: ease-in-out; /* FROM DOCS §4 */
+  --ease-spring: ease-out; /* TODO — "spring for selected playful interactions" */
+
+  /* -----------------------------------------------------------------------
+   * LAYOUT
+   *
+   * TODO: container width and section rhythm are composition decisions
+   * (docs/DESIGN_SYSTEM.md §6).
+   * -------------------------------------------------------------------- */
+
+  --container-max: 1200px; /* TODO */
+  --container-gutter: var(--space-4); /* TODO */
+}
+
+/* ===========================================================================
+ * DARK SCHEME
+ *
+ * STRUCTURE ONLY. Whether WWS ships a dark theme at all — and what it looks
+ * like if it does — is a Phase 2 decision. This block exists so that the
+ * mechanism is proven and so no component hardcodes a colour that only works
+ * in one scheme. Values are PLACEHOLDER neutrals throughout.
+ * ======================================================================== */
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --color-background: #0b0b0d; /* PLACEHOLDER */
+    --color-background-secondary: #141417; /* PLACEHOLDER */
+
+    --color-surface: #141417; /* PLACEHOLDER */
+    --color-surface-elevated: #1c1c20; /* PLACEHOLDER */
+
+    --color-text-primary: #fafafa; /* PLACEHOLDER */
+    --color-text-secondary: #d4d4d8; /* PLACEHOLDER */
+    --color-text-muted: #a1a1aa; /* PLACEHOLDER */
+
+    --color-border: #27272a; /* PLACEHOLDER */
+    --color-border-subtle: #27272a; /* PLACEHOLDER */
+    --color-border-strong: #3f3f46; /* PLACEHOLDER */
+  }
+}
+
+/* Explicit theme override, so a future toggle wins over the OS setting in both
+ * directions. No values are asserted beyond the placeholders above. */
+:root[data-theme='dark'] {
+  --color-background: #0b0b0d; /* PLACEHOLDER */
+  --color-background-secondary: #141417; /* PLACEHOLDER */
+
+  --color-surface: #141417; /* PLACEHOLDER */
+  --color-surface-elevated: #1c1c20; /* PLACEHOLDER */
+
+  --color-text-primary: #fafafa; /* PLACEHOLDER */
+  --color-text-secondary: #d4d4d8; /* PLACEHOLDER */
+  --color-text-muted: #a1a1aa; /* PLACEHOLDER */
+
+  --color-border: #27272a; /* PLACEHOLDER */
+  --color-border-subtle: #27272a; /* PLACEHOLDER */
+  --color-border-strong: #3f3f46; /* PLACEHOLDER */
+}

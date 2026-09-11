@@ -13,12 +13,18 @@ product loop:
 
 ## Status
 
-**Phase 1 — engineering foundation.** Milestone 1A is complete: repository,
-Next.js with strict TypeScript, Tailwind, ESLint/Prettier, environment
-validation and the Supabase client architecture.
+**Phase 1 — engineering foundation.** Milestones 1A and 1B are complete:
+repository, Next.js with strict TypeScript, Tailwind, ESLint/Prettier,
+environment validation, the Supabase client architecture, auth session refresh,
+a health-check endpoint, design-token infrastructure and CI.
 
-The product itself is not built yet. There is no authentication, database
+The product itself is not built yet. There is no authentication UI, database
 schema, trip catalogue, booking flow or admin area. See `docs/ROADMAP.md`.
+
+**The visual design is deliberately undecided.** Token *names* exist in
+`styles/tokens.css`; their *values* are placeholders awaiting the
+design-direction session. Nothing in this repository should be read as the WWS
+visual identity.
 
 ## Stack
 
@@ -67,16 +73,59 @@ The app runs at http://localhost:3000.
 | `npm run verify` | typecheck + lint + format check — run before committing |
 | `npm run db:types` | Regenerate Supabase types (requires the CLI) |
 
+## Health check
+
+```
+GET /api/health
+```
+
+Verifies that this deployment can reach its configured Supabase backend. Returns
+`200` when healthy and `503` when not, so an uptime monitor or load balancer can
+act on it.
+
+```jsonc
+{
+  "status": "ok",
+  "timestamp": "2026-09-12T10:00:00.000Z",
+  "checks": {
+    "environment": { "status": "ok" },
+    "database": { "status": "ok", "latencyMs": 92 },
+  },
+}
+```
+
+It uses the anon client, so a healthy result proves the path real users take is
+working. It returns no configuration — no project URL, keys, table names or row
+counts — and driver messages appear only in development. Failures are reported
+as `UNREACHABLE` (network, DNS, paused project, timeout) or `REJECTED`
+(Supabase answered and refused, usually a wrong or rotated key), because those
+two send you to completely different places.
+
+Until the schema exists, "table not found" is the expected healthy answer: it
+proves Supabase replied.
+
 ## Project structure
 
 ```text
-app/          Next.js App Router routes
+proxy.ts      auth session refresh (Next 16 renamed this from middleware.ts)
+app/          Next.js App Router routes, including api/health
 components/   Reusable UI (components/ui holds shadcn primitives)
 lib/          env validation, Supabase clients, shared utilities
-supabase/     migrations and edge functions
+styles/       design token infrastructure
+supabase/     CLI config and migrations
 docs/         source-of-truth product, architecture and design documents
 tests/        unit, integration and end-to-end tests
 ```
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs typecheck, lint and format check on every push
+and pull request to `main`. It contains no secrets and needs none.
+
+The build is not run in CI: it inlines `NEXT_PUBLIC_*` values and fails fast
+without them, so including it would mean committing placeholder Supabase values.
+Build verification happens in the Vercel Preview deployment on each pull
+request, which has the real configuration.
 
 ## Documentation
 

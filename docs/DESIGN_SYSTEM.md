@@ -33,6 +33,13 @@ The interface must always make these easy to identify:
 
 All visual decisions should be represented as centralized tokens or CSS variables.
 
+> **Implementation note (Phase 1).** The token mechanism exists at
+> `styles/tokens.css`, wired into Tailwind via `@theme inline` in
+> `app/globals.css`. The token *names* below are implemented; the *values* are
+> deliberately placeholders, marked `PLACEHOLDER` or `TODO` in that file, and
+> are set in the design-direction session. Build components against the tokens,
+> never against literal values.
+
 ### Color roles
 
 ```text

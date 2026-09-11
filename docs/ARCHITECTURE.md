@@ -131,6 +131,32 @@ public/
 scripts/
 ```
 
+### Implemented so far (Phase 1)
+
+The tree above is the target. What currently exists:
+
+```text
+proxy.ts                  session refresh on every matched request
+app/
+  layout.tsx              minimal shell
+  page.tsx                placeholder
+  globals.css             Tailwind wiring + token mapping
+  api/health/route.ts     backend connectivity check
+lib/
+  env/client.ts           validated public config
+  env/server.ts           validated secrets, server-only
+  supabase/client.ts      browser client
+  supabase/server.ts      server client, acts as the user
+  supabase/admin.ts       service-role client, server-only
+  supabase/middleware.ts  session refresh implementation
+styles/tokens.css         design token infrastructure (values not yet decided)
+supabase/                 CLI config and migrations
+.github/workflows/ci.yml  typecheck, lint, format
+```
+
+Note: Next 16 renamed the `middleware` file convention to `proxy`. The file is
+`proxy.ts`; the behaviour is unchanged.
+
 ## 7. Environment model
 
 Development, Preview, and Production must be isolated.
@@ -150,6 +176,35 @@ feature/*
 ## 8. Data access
 
 Use the minimum privilege necessary. Public pages may read public trip data. Authenticated users may read only permitted private data. Admin operations must use server-side authorization.
+
+### Session handling
+
+Supabase access tokens are short-lived and Server Components cannot write
+cookies, so the refresh happens in `proxy.ts` — the one place that can read
+request cookies and write them back onto the response.
+
+Two constraints are load-bearing:
+
+- `supabase.auth.getUser()` must be called, never `getSession()`. `getSession`
+  decodes the cookie without verifying it against the Auth server, so it will
+  report a user from a forged or expired token.
+- The response carrying the refreshed cookies must be the one returned.
+  Constructing a new response afterwards silently discards them.
+
+The proxy performs no authorisation. Route protection needs somewhere to
+redirect to, which arrives with Phase 4; authorisation remains a server-side
+and RLS concern regardless.
+
+### Environment validation
+
+Public configuration (`lib/env/client.ts`) and secrets (`lib/env/server.ts`)
+are validated separately with Zod. The server module carries `server-only`, so
+importing it from client code is a build error.
+
+Validation is eager, at module load. Because `NEXT_PUBLIC_*` values are inlined
+into the client bundle at build time, a build without them would produce a
+broken deployment — so the build fails instead, naming every missing variable.
+This means **builds require environment configuration**, including on Vercel.
 
 ## 9. Server-only secrets
 

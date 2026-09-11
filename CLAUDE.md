@@ -32,12 +32,21 @@ with a document, raise the conflict before changing the document.
 
 ## Current position
 
-Phase 1 (engineering foundation). Milestone 1A complete: repository, Next.js +
-strict TypeScript, Tailwind, ESLint/Prettier, Supabase client architecture,
-environment validation.
+Phase 1 (engineering foundation), milestones 1A and 1B complete: repository,
+Next.js + strict TypeScript, Tailwind, ESLint/Prettier, Supabase client
+architecture, environment validation, session refresh (`proxy.ts`),
+`/api/health`, design-token infrastructure, CI.
 
-Not yet built: auth, database schema, trips, bookings, payments, community, AI,
-admin. Do not assume any of these exist.
+Not yet built: auth UI, database schema, trips, bookings, payments, community,
+AI, admin. Do not assume any of these exist.
+
+**The visual design does not exist and must not be invented.** Brand colour,
+typeface, spacing composition, glass treatment, shadows and motion style are
+the product owner's decisions, pending a design-direction session. Token names
+exist in `styles/tokens.css`; their values are placeholders marked
+`PLACEHOLDER` or `TODO`. Do not replace them, and do not build marketing or
+product UI, until those decisions are given. Treat `docs/DESIGN_SYSTEM.md` as a
+description of the vocabulary, not permission to implement a look.
 
 ## Stack
 
@@ -75,6 +84,10 @@ which does not yet support TypeScript 7. Revisit when that lands.
 
 - Strict TypeScript. No `any`, no unchecked non-null assertions. Fix types
   rather than silencing them.
+- Style through tokens from `styles/tokens.css` — `var(--color-surface)` or the
+  generated utility, never a literal colour, radius or duration. A component
+  written against tokens survives the design direction landing; one written
+  against `#ffffff` does not.
 - Server Components by default; `'use client'` only where interaction needs it.
 - Validate all external input with Zod at the boundary.
 - Never swallow errors silently.
@@ -99,3 +112,13 @@ start the next milestone automatically.
 
 Do not fabricate functionality, invent data, or claim something works without
 having run it.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

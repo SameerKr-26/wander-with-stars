@@ -13,8 +13,13 @@ export default function HomePage() {
       </p>
       <h1 className="text-3xl font-bold text-balance sm:text-4xl">Engineering foundation</h1>
       <p className="text-base leading-relaxed opacity-80">
-        Milestone 1A is in place: Next.js, TypeScript in strict mode, Tailwind, ESLint and Prettier.
-        The product experience is built from Phase 2 onward.
+        Phase 1 is in place: strict TypeScript, Supabase client separation, session refresh,
+        environment validation and a health check at <code>/api/health</code>.
+      </p>
+      <p className="text-base leading-relaxed opacity-80">
+        This placeholder carries no visual design. Brand colour, typeface and composition are
+        decided in the design-direction session, then applied through the tokens in{' '}
+        <code>styles/tokens.css</code>.
       </p>
       <p className="text-sm opacity-60">
         See{' '}

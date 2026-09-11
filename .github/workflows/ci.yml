@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# A new push to the same branch cancels the previous run — no point burning
+# minutes verifying a commit that has already been superseded.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Read-only by default. This workflow never needs to write to the repository,
+# and a token that cannot write cannot be abused into writing.
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Typecheck, lint, format
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # `npm ci` installs strictly from package-lock.json and fails if the
+      # lockfile and package.json disagree — deterministic, unlike `npm install`
+      # which would silently resolve new versions.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Check formatting
+        run: npm run format:check
+
+# ---------------------------------------------------------------------------
+# Deliberately NOT here:
+#
+# 1. No secrets, and no `secrets:` block. This workflow needs none, so it has
+#    none — including on pull_request runs from forks.
+#
+# 2. No `npm run build`. The build inlines NEXT_PUBLIC_* variables and fails
+#    fast when they are absent (by design — see lib/env/client.ts), so running
+#    it here would mean inventing placeholder Supabase values purely to satisfy
+#    a check. Build verification happens in the Vercel Preview deployment that
+#    runs on every pull request, using that environment's real configuration.
+#    That catches build breakage before merge without putting fake credentials
+#    in the repository.
+#
+# 3. No test runner. Nothing is under test yet. Test jobs are added with the
+#    milestone that introduces tests, not before (docs/ROADMAP.md).
+# ---------------------------------------------------------------------------
