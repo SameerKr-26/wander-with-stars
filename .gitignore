@@ -1,0 +1,93 @@
+# ---------------------------------------------------------------------------
+# Wander With Stars — ignore rules
+# Secrets and generated artefacts must never enter version control.
+# ---------------------------------------------------------------------------
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/releases
+!.yarn/versions
+
+# Environment / secrets
+# .env.example is the ONLY env file that may be committed.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets.json
+service-account*.json
+
+# Next.js build output
+.next/
+out/
+build/
+dist/
+next-env.d.ts
+
+# Vercel
+.vercel
+
+# Supabase
+# Local CLI state, temp files and the generated DB password.
+supabase/.branches/
+supabase/.temp/
+supabase/.env
+supabase/logs/
+
+# Generated database types are committed on purpose (see docs/ARCHITECTURE.md),
+# so lib/supabase/database.types.ts is intentionally NOT ignored.
+
+# Testing / coverage
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/
+
+# TypeScript / build info
+*.tsbuildinfo
+
+# Caches
+.eslintcache
+.cache/
+.turbo/
+.swc/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# Editors
+.idea/
+*.swp
+*.swo
+*~
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.example
+
+# Local scratch
+scratch/
+tmp/
