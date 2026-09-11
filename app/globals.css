@@ -2,70 +2,100 @@
 @import '../styles/tokens.css';
 
 /* ---------------------------------------------------------------------------
- * GLOBAL BASE — INFRASTRUCTURE ONLY
+ * GLOBAL BASE
  *
- * All design values live in styles/tokens.css. This file only wires those
- * tokens into Tailwind and sets the minimum base rules needed for the
- * application to render legibly.
+ * All design values live in styles/tokens.css. This file wires the semantic
+ * roles into Tailwind and sets base element rules. It contains no colour,
+ * size or timing values of its own — if you find yourself adding one here,
+ * it belongs in the token file.
  *
- * No visual design decisions are made here. See styles/tokens.css for why.
+ * Contract: docs/WWS_VISUAL_IDENTITY.md
  * ------------------------------------------------------------------------- */
 
-/* `@theme inline` exposes the semantic tokens as Tailwind utilities without
- * copying their values, so `bg-surface` and `text-muted` resolve through the
- * CSS variables. This is the mechanism that makes the design session a
- * one-file change: update a token, and every utility follows.
+/* `@theme inline` exposes the semantic roles as Tailwind utilities without
+ * copying values, so `bg-surface`, `text-brand`, `rounded-card` and
+ * `duration-reveal` all resolve through the CSS variables. Change a token,
+ * and every utility follows.
  *
- * Utilities generated: bg-background, bg-surface, text-primary, text-muted,
- * border-subtle, rounded-md, duration-card, ease-standard, and so on. */
+ * Only SEMANTIC roles are exposed. Brand primitives are deliberately absent
+ * so no component can reach past the semantic layer to a raw brand colour. */
 @theme inline {
   --color-background: var(--color-background);
   --color-background-secondary: var(--color-background-secondary);
   --color-surface: var(--color-surface);
   --color-surface-elevated: var(--color-surface-elevated);
-  --color-surface-glass: var(--color-surface-glass);
-  --color-surface-glass-1: var(--color-surface-glass-1);
-  --color-surface-glass-2: var(--color-surface-glass-2);
-  --color-surface-glass-3: var(--color-surface-glass-3);
+  --color-surface-sunk: var(--color-surface-sunk);
+  --color-surface-brand: var(--color-surface-brand);
+  --color-surface-brand-deep: var(--color-surface-brand-deep);
+  --color-surface-accent: var(--color-surface-accent);
 
   --color-text-primary: var(--color-text-primary);
   --color-text-secondary: var(--color-text-secondary);
   --color-text-muted: var(--color-text-muted);
+  --color-text-brand: var(--color-text-brand);
+  --color-text-brand-strong: var(--color-text-brand-strong);
+  --color-text-brand-display: var(--color-text-brand-display);
+  --color-text-on-brand: var(--color-text-on-brand);
+  --color-text-on-accent: var(--color-text-on-accent);
 
   --color-border: var(--color-border);
   --color-border-subtle: var(--color-border-subtle);
   --color-border-strong: var(--color-border-strong);
+  --color-border-brand: var(--color-border-brand);
 
   --color-accent: var(--color-accent);
   --color-accent-soft: var(--color-accent-soft);
-  --color-success: var(--color-success);
-  --color-warning: var(--color-warning);
-  --color-error: var(--color-error);
+  --color-highlight: var(--color-highlight);
 
   --font-display: var(--font-display);
   --font-body: var(--font-body);
   --font-mono: var(--font-mono);
 
-  --radius-sm: var(--radius-sm);
-  --radius-md: var(--radius-md);
-  --radius-lg: var(--radius-lg);
+  --radius-panel: var(--radius-panel);
+  --radius-card: var(--radius-card);
+  --radius-control: var(--radius-control);
   --radius-pill: var(--radius-pill);
 
   --shadow-sm: var(--shadow-sm);
   --shadow-md: var(--shadow-md);
   --shadow-lg: var(--shadow-lg);
   --shadow-xl: var(--shadow-xl);
+
+  --ease-standard: var(--ease-standard);
+  --ease-smooth: var(--ease-smooth);
 }
 
 body {
   background: var(--color-background);
   color: var(--color-text-primary);
   font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-/* docs/MOTION_SYSTEM.md §16 — reduced motion is honoured from day one, before
- * any motion exists to honour. Cheaper to establish now than to retrofit. */
+/* Geometric faces read better tightened at display sizes and normal at body
+ * size, so tracking is bound to the heading levels rather than applied ad hoc. */
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  line-height: var(--leading-snug);
+  letter-spacing: var(--tracking-heading);
+  text-wrap: balance;
+}
+
+/* Visible, branded focus. §20 forbids letting accessibility degrade for
+ * visual effect, so this is set once here and never removed per-component. */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: var(--space-1);
+}
+
+/* docs/WWS_VISUAL_IDENTITY.md §14 and docs/MOTION_SYSTEM.md §16. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

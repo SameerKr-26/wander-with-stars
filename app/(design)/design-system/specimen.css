@@ -1,0 +1,132 @@
+/* ---------------------------------------------------------------------------
+ * SPECIMEN-ONLY STYLES
+ *
+ * Scoped to the design-system specimen and imported by its page. Deliberately
+ * NOT in app/globals.css: nothing here ships with product pages, and deleting
+ * the (design) route group removes it entirely.
+ *
+ * Interaction states live here rather than inline because :hover, :active and
+ * :focus-visible cannot be expressed as inline styles.
+ *
+ * All motion below is neutralised by the prefers-reduced-motion rule in
+ * globals.css, which applies globally.
+ * ------------------------------------------------------------------------ */
+
+/* ----------------------------------------------------------------- buttons */
+
+/* Depth: resting, hover and press are three distinct elevations, so the control
+ * feels physical. Restrained by intent — no glow, no colour in the shadow. */
+
+.specimen-button:hover:not(:disabled) {
+  /* One nudge of contrast, no colour change — the palette stays closed. */
+  filter: brightness(1.06);
+  box-shadow: var(--shadow-button-hover);
+  transform: translateY(var(--motion-button-lift));
+}
+
+.specimen-button:active:not(:disabled) {
+  /* §14 — subtle compression on press, and elevation drops below resting.
+     `scale` alone here deliberately cancels the hover lift. */
+  transform: scale(var(--motion-press-scale));
+  box-shadow: var(--shadow-button-press);
+  filter: none;
+}
+
+/* Tertiary is a text action, not a surface — DESIGN_SYSTEM §14. Elevation
+ * would make it read as a filled control. */
+.specimen-button--flat,
+.specimen-button--flat:hover:not(:disabled),
+.specimen-button--flat:active:not(:disabled) {
+  box-shadow: none;
+  transform: none;
+}
+
+.specimen-button--flat:hover:not(:disabled) {
+  background: var(--color-accent-soft);
+}
+
+.specimen-button:disabled {
+  box-shadow: none;
+}
+
+/* ------------------------------------------------------------------- cards */
+
+@media (hover: hover) and (pointer: fine) {
+  .specimen-card:hover {
+    /* §14 — card hover lift. */
+    transform: translateY(var(--motion-card-lift));
+    box-shadow: var(--shadow-lg);
+  }
+
+  .specimen-card:hover .specimen-card__image {
+    /* §14 — image zoom, crop and focal point preserved. */
+    transform: scale(var(--motion-image-zoom));
+  }
+}
+
+/* Focus parity: keyboard users get the same reveal as pointer users. */
+.specimen-card:focus-within {
+  transform: translateY(var(--motion-card-lift));
+  box-shadow: var(--shadow-lg);
+}
+
+/* Progressive disclosure of SECONDARY information only.
+ *
+ * UX_INTERACTION_GUIDE §3 and WWS_VISUAL_IDENTITY §16: essential information
+ * must never require hover, and on touch devices secondary information must be
+ * visible rather than hidden. So the default state is VISIBLE, and concealment
+ * is applied only where a real pointer exists and there is room for it. */
+.specimen-card__secondary {
+  transition-property: opacity, transform;
+  transition-duration: var(--duration-standard);
+  transition-timing-function: var(--ease-standard);
+}
+
+@media (hover: hover) and (pointer: fine) and (min-width: 768px) {
+  .specimen-card__secondary {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  .specimen-card:hover .specimen-card__secondary,
+  .specimen-card:focus-within .specimen-card__secondary {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ------------------------------------------------------------------ motion */
+
+.motion-sample {
+  transition-property: transform, box-shadow;
+}
+
+.motion-sample__inner {
+  transition-property: opacity, transform;
+}
+
+.motion-sample--lift:hover,
+.motion-sample--lift:focus-visible {
+  transform: translateY(var(--motion-card-lift));
+  box-shadow: var(--shadow-lg);
+}
+
+.motion-sample--reveal .motion-sample__inner {
+  opacity: 0.35;
+  transform: translateY(var(--motion-reveal-y));
+}
+
+.motion-sample--reveal:hover .motion-sample__inner,
+.motion-sample--reveal:focus-visible .motion-sample__inner {
+  opacity: 1;
+  transform: none;
+}
+
+.motion-sample--zoom:hover .motion-sample__inner,
+.motion-sample--zoom:focus-visible .motion-sample__inner {
+  transform: scale(1.18);
+}
+
+.motion-sample--press:active {
+  transform: scale(var(--motion-press-scale));
+}

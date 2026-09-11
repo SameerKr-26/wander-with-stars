@@ -1,124 +1,164 @@
 /* ===========================================================================
- * WWS DESIGN TOKENS — INFRASTRUCTURE ONLY
+ * WWS DESIGN TOKENS
  *
- * ⚠️  NONE OF THESE VALUES ARE FINAL. NONE OF THEM ARE BRAND DECISIONS.
+ * Contract: docs/WWS_VISUAL_IDENTITY.md (§22 — treat that file as binding).
+ * Scales and motion also reference docs/DESIGN_SYSTEM.md and
+ * docs/MOTION_SYSTEM.md.
  *
- * This file exists so that, when the product owner defines the visual
- * direction, there is exactly ONE place to change it — and every component
- * built afterwards inherits that change for free. It establishes the
- * mechanism, not the aesthetics.
+ * TWO LAYERS, AND THE DISTINCTION MATTERS:
  *
- * The token NAMES come from docs/DESIGN_SYSTEM.md §3 and docs/MOTION_SYSTEM.md
- * §3–4, so the vocabulary matches the documents already agreed.
+ *   1. BRAND PRIMITIVES — the locked palette. Approved by the product owner.
+ *      Never edit these, and never add a sibling without approval.
+ *      Components must NOT reference them directly.
  *
- * The token VALUES fall into three groups, marked inline:
+ *   2. SEMANTIC ROLES — what components actually use. Every role points at a
+ *      primitive or a mix of primitives, so no component ever contains a hex
+ *      value and the palette can shift from one place.
  *
- *   PLACEHOLDER  — a neutral stand-in chosen only so the app renders legibly.
- *                  Carries no brand intent. Every one of these is expected to
- *                  be replaced.
- *   FROM DOCS    — transcribed from a scale already written down in the
- *                  documents. Still subject to confirmation.
- *   TODO         — deliberately left unset. Choosing a value here would be an
- *                  aesthetic decision that is not mine to make.
- *
- * Rule for anyone building components before the design session:
- * reference the token, never a literal. A component written against
- * var(--color-surface) survives the design direction landing. One written
- * against #ffffff does not.
+ * No colour outside layer 1 is introduced anywhere. Where a softer tone is
+ * needed, it is derived with color-mix() from locked primitives rather than
+ * invented — see "derived tones" below.
  * ======================================================================== */
 
 :root {
-  /* -----------------------------------------------------------------------
-   * COLOUR — semantic roles
+  /* =======================================================================
+   * 1. BRAND PRIMITIVES — LOCKED. DO NOT MODIFY.
+   * ==================================================================== */
+
+  /* Core brand. Immutable — sampled from the logo and approved.
+     Independently verified against public/brand: measured #0696B1 / #FEDE5A,
+     within 2/255 of these values (JPEG compression accounts for the rest). */
+  --wws-teal-core: #0497b2; /* LOCKED — fills, icons, large display only */
+  --wws-yellow-core: #fede59; /* LOCKED — accent/fill only, never text on light */
+
+  /* Approved semantic teals. Same hue family (189/186/190, 4deg spread),
+     added because the core teal is 3.35:1 on ivory and cannot carry
+     body-size text. */
+  --wws-teal-medium: #00758a; /* LOCKED — solid surfaces, buttons */
+  --wws-teal-text: #006d7a; /* LOCKED — body-size teal text, links */
+  --wws-teal-deep: #005f73; /* LOCKED — strongest teal, dark surfaces */
+
+  /* Neutrals. */
+  --wws-ivory: #fffbf5; /* LOCKED — warm-light page base */
+  --wws-charcoal: #142126; /* LOCKED — default text */
+  --wws-white: #ffffff; /* LOCKED — elevated surfaces */
+
+  /* =======================================================================
+   * DERIVED TONES
    *
-   * PLACEHOLDER: pure neutrals only. No hue has been chosen, because no hue
-   * has been decided. Greys here are intentionally uncommitted — they are not
-   * a "neutral palette" in the design sense, just legible defaults.
-   * -------------------------------------------------------------------- */
+   * Not new colours: each is a measured mix of two locked primitives, so the
+   * palette stays closed. Contrast for every one is recorded in §CONTRAST
+   * below and rendered live on /design-system.
+   * ==================================================================== */
 
-  --color-background: #ffffff; /* PLACEHOLDER */
-  --color-background-secondary: #f4f4f5; /* PLACEHOLDER */
+  --wws-charcoal-78: color-mix(in srgb, var(--wws-charcoal) 78%, var(--wws-ivory));
+  --wws-charcoal-58: color-mix(in srgb, var(--wws-charcoal) 58%, var(--wws-ivory));
+  --wws-charcoal-14: color-mix(in srgb, var(--wws-charcoal) 14%, var(--wws-ivory));
+  --wws-charcoal-08: color-mix(in srgb, var(--wws-charcoal) 8%, var(--wws-ivory));
 
-  --color-surface: #ffffff; /* PLACEHOLDER */
-  --color-surface-elevated: #ffffff; /* PLACEHOLDER */
+  /* "Water light" tints — docs/WWS_VISUAL_IDENTITY.md §4. */
+  --wws-teal-wash: color-mix(in srgb, var(--wws-teal-core) 8%, var(--wws-white));
+  --wws-teal-wash-strong: color-mix(in srgb, var(--wws-teal-core) 16%, var(--wws-white));
 
-  --color-text-primary: #18181b; /* PLACEHOLDER */
-  --color-text-secondary: #3f3f46; /* PLACEHOLDER */
-  --color-text-muted: #71717a; /* PLACEHOLDER */
+  /* =======================================================================
+   * 2. SEMANTIC ROLES — components use ONLY these.
+   * ==================================================================== */
 
-  --color-border: #e4e4e7; /* PLACEHOLDER — alias of border-subtle */
-  --color-border-subtle: #e4e4e7; /* PLACEHOLDER */
-  --color-border-strong: #d4d4d8; /* PLACEHOLDER */
+  /* Backgrounds and surfaces */
+  --color-background: var(--wws-ivory);
+  --color-background-secondary: var(--wws-teal-wash);
+  --color-surface: var(--wws-white);
+  --color-surface-elevated: var(--wws-white);
+  --color-surface-sunk: var(--wws-charcoal-08);
+  --color-surface-brand: var(--wws-teal-medium);
+  --color-surface-brand-deep: var(--wws-teal-deep);
+  --color-surface-accent: var(--wws-yellow-core);
 
-  /* TODO — brand accent. Deliberately uncommitted: currentColor inherits
-     rather than asserting a hue, so nothing accidentally ships looking
-     "designed" before the direction exists. */
-  --color-accent: currentColor;
-  --color-accent-soft: transparent;
+  /* Text. Roles, not colours: pick by meaning and contrast follows. */
+  --color-text-primary: var(--wws-charcoal); /* 15.97:1 on ivory */
+  --color-text-secondary: var(--wws-charcoal-78);
+  --color-text-muted: var(--wws-charcoal-58);
+  --color-text-brand: var(--wws-teal-text); /* 5.87:1 — safe at body size */
+  --color-text-brand-strong: var(--wws-teal-deep); /* 7.06:1 — AAA */
+  --color-text-on-brand: var(--wws-white); /* on teal-medium/deep */
+  --color-text-on-accent: var(--wws-charcoal); /* on yellow — 12.39:1 */
 
-  /* TODO — status colours. Functional rather than brand, but they still need
-     to sit correctly against the final palette and meet contrast targets
-     (docs/DESIGN_SYSTEM.md §19), so they are set with the rest. */
-  --color-success: currentColor;
-  --color-warning: currentColor;
-  --color-error: currentColor;
+  /* Display-only brand colour. Named so the constraint travels with the
+     token: 3.35:1 on ivory is legal for large/bold text and UI components,
+     never for paragraphs. Use --color-text-brand for body-size teal. */
+  --color-text-brand-display: var(--wws-teal-core);
 
-  /* -----------------------------------------------------------------------
-   * SURFACE / GLASS — docs/DESIGN_SYSTEM.md §9
-   *
-   * TODO: three glass levels are specified by name. Their translucency and
-   * blur are explicitly the product owner's call, so they resolve to a plain
-   * surface for now. Components may reference them today; they will simply
-   * look solid until the values land.
-   * -------------------------------------------------------------------- */
+  /* Borders */
+  --color-border-subtle: var(--wws-charcoal-08);
+  --color-border: var(--wws-charcoal-14);
+  --color-border-strong: var(--wws-charcoal-58);
+  --color-border-brand: var(--wws-teal-core);
 
-  --color-surface-glass: var(--color-surface); /* TODO — alias of glass-1 */
-  --color-surface-glass-1: var(--color-surface); /* TODO */
-  --color-surface-glass-2: var(--color-surface); /* TODO */
-  --color-surface-glass-3: var(--color-surface); /* TODO */
+  /* Accent */
+  --color-accent: var(--wws-teal-core);
+  --color-accent-soft: var(--wws-teal-wash);
+  --color-highlight: var(--wws-yellow-core);
 
-  --blur-glass-1: 0; /* TODO */
-  --blur-glass-2: 0; /* TODO */
-  --blur-glass-3: 0; /* TODO */
-
-  /* -----------------------------------------------------------------------
-   * ELEVATION — docs/DESIGN_SYSTEM.md §10
-   *
-   * TODO: four semantic levels, values unset. "Avoid glow everywhere" is a
-   * stated principle, so these need designing as a set rather than per
-   * component.
-   * -------------------------------------------------------------------- */
-
-  --shadow-sm: none; /* TODO */
-  --shadow-md: none; /* TODO */
-  --shadow-lg: none; /* TODO */
-  --shadow-xl: none; /* TODO */
-
-  /* -----------------------------------------------------------------------
+  /* =======================================================================
    * TYPOGRAPHY
    *
-   * TODO: typeface and weight system are a design-session decision
-   * (docs/DESIGN_SYSTEM.md §4). The system stack below is a functional
-   * fallback so text renders — it is not a typographic choice.
-   * -------------------------------------------------------------------- */
+   * Family: Manrope (LOCKED, §5). Loaded via next/font in app/layout.tsx,
+   * which supplies --font-manrope with a self-hosted, preloaded face.
+   * ==================================================================== */
 
-  --font-display:
-    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; /* TODO */
-  --font-body:
-    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; /* TODO */
-  --font-mono: ui-monospace, 'Cascadia Mono', 'Segoe UI Mono', Consolas, monospace; /* TODO */
+  --font-display: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Mono', 'Segoe UI Mono', Consolas, monospace;
 
-  /* TODO — the type scale itself (sizes, line heights, tracking) is defined in
-     the design session. No scale is asserted here on purpose: a half-chosen
-     scale is harder to replace than none. */
+  /* Weight hierarchy — LOCKED. Ranges are the approved latitude, not an
+     invitation to drift; pick within them by role, never per-component. */
+  --weight-body: 400; /* body, metadata — 400-500 */
+  --weight-emphasis: 500; /* body emphasis */
+  --weight-label: 600; /* labels */
+  --weight-subheading: 600; /* subheadings — 600-700 */
+  --weight-heading: 700; /* major headings */
+  --weight-display: 800; /* hero / display */
 
-  /* -----------------------------------------------------------------------
-   * SPACING — FROM DOCS, docs/DESIGN_SYSTEM.md §7
-   *
-   * Transcribed from the agreed scale: 4 / 8 / 12 / 16 / 20 / 24 / 32 / 40 /
-   * 48 / 64 / 80 / 96 / 128. Subject to confirmation, but this is a recorded
-   * decision rather than an invented one.
-   * -------------------------------------------------------------------- */
+  /* Size scale — LOCKED. */
+  --text-xs: 0.75rem; /* 12px — metadata */
+  --text-sm: 0.875rem; /* 14px — labels, captions */
+  --text-base: 1rem; /* 16px — body */
+  --text-lg: 1.125rem; /* 18px — lead body */
+  --text-xl: 1.25rem; /* 20px — card titles */
+  --text-2xl: 1.5rem; /* 24px — sub-section */
+  --text-3xl: 1.875rem; /* 30px — section heading */
+  --text-4xl: 2.375rem; /* 38px — large section */
+  --text-5xl: 3rem; /* 48px */
+  --text-6xl: 3.75rem; /* 60px */
+  --text-display: 4.5rem; /* 72px — display */
+
+  /* Hero — deliberately outside the standard scale (expressive by intent).
+     One token, three approved bands, so no component has to carry its own
+     breakpoint logic. Mobile-first; overrides sit below :root. */
+  --text-hero: clamp(2.625rem, 11vw, 3.75rem); /* mobile 42-60px */
+
+  --leading-tight: 1.05; /* display/hero */
+  --leading-snug: 1.2; /* headings */
+  --leading-normal: 1.6; /* body */
+
+  --tracking-display: -0.03em; /* geometric faces need tightening when large */
+  --tracking-heading: -0.015em;
+  --tracking-normal: 0;
+  --tracking-label: 0.08em; /* uppercase labels */
+
+  /* =======================================================================
+   * GEOMETRY — §8. Ranges from the document; the chosen value sits inside.
+   * "Avoid excessive rounded SaaS aesthetics."
+   * ==================================================================== */
+
+  --radius-panel: 20px; /* feature panels — range 20-24 */
+  --radius-card: 14px; /* standard cards — range 12-16 */
+  --radius-control: 12px; /* buttons, inputs — range 10-12 */
+  --radius-pill: 999px; /* only where semantically useful */
+
+  /* =======================================================================
+   * SPACING — docs/DESIGN_SYSTEM.md §7
+   * ==================================================================== */
 
   --space-1: 4px;
   --space-2: 8px;
@@ -134,87 +174,190 @@
   --space-24: 96px;
   --space-32: 128px;
 
-  /* -----------------------------------------------------------------------
-   * RADIUS — FROM DOCS, docs/DESIGN_SYSTEM.md §8
-   * -------------------------------------------------------------------- */
-
-  --radius-sm: 10px;
-  --radius-md: 14px;
-  --radius-lg: 20px;
-  --radius-pill: 999px;
-
-  /* -----------------------------------------------------------------------
-   * MOTION — FROM DOCS, docs/MOTION_SYSTEM.md §3–4
+  /* =======================================================================
+   * ELEVATION
    *
-   * The documents specify ranges rather than single values. The midpoint of
-   * each range is used as a provisional default so components have something
-   * consistent to reference; the final value per tier is confirmed in the
-   * design session. The ranges are kept in the comments so nothing is lost.
-   * -------------------------------------------------------------------- */
+   * Tinted with the brand hue rather than neutral black, so shadows sit in
+   * the palette. Restrained by intent — §20 forbids glow.
+   * ==================================================================== */
 
-  --duration-micro: 150ms; /* range 120–180ms */
-  --duration-standard: 210ms; /* range 180–240ms */
-  --duration-card: 270ms; /* range 220–320ms */
-  --duration-modal: 325ms; /* range 250–400ms */
-  --duration-reveal: 550ms; /* range 400–700ms */
-  --duration-hero: 950ms; /* range 700–1200ms */
+  --shadow-sm: 0 1px 2px color-mix(in srgb, var(--wws-charcoal) 6%, transparent);
+  --shadow-md:
+    0 2px 4px color-mix(in srgb, var(--wws-charcoal) 5%, transparent),
+    0 6px 16px color-mix(in srgb, var(--wws-charcoal) 7%, transparent);
+  --shadow-lg:
+    0 4px 8px color-mix(in srgb, var(--wws-charcoal) 5%, transparent),
+    0 14px 32px color-mix(in srgb, var(--wws-charcoal) 9%, transparent);
+  --shadow-xl:
+    0 8px 16px color-mix(in srgb, var(--wws-charcoal) 6%, transparent),
+    0 28px 60px color-mix(in srgb, var(--wws-charcoal) 12%, transparent);
 
-  --ease-standard: ease-out; /* FROM DOCS §4 */
-  --ease-smooth: ease-in-out; /* FROM DOCS §4 */
-  --ease-spring: ease-out; /* TODO — "spring for selected playful interactions" */
+  /* Button elevation. Two stacked layers — a tight contact shadow that keeps
+     the edge crisp, plus a soft ambient one for lift. That combination is what
+     reads as a physical control; a single large blur reads as a floating
+     bubble. Tinted with charcoal, never a coloured glow. */
+  --shadow-button:
+    0 1px 2px color-mix(in srgb, var(--wws-charcoal) 10%, transparent),
+    0 2px 6px color-mix(in srgb, var(--wws-charcoal) 8%, transparent);
+  --shadow-button-hover:
+    0 2px 4px color-mix(in srgb, var(--wws-charcoal) 10%, transparent),
+    0 8px 18px color-mix(in srgb, var(--wws-charcoal) 14%, transparent);
+  /* Pressed sits lower than resting — the control moves toward the surface. */
+  --shadow-button-press: 0 1px 2px color-mix(in srgb, var(--wws-charcoal) 12%, transparent);
 
-  /* -----------------------------------------------------------------------
+  --motion-button-lift: -1px;
+
+  /* =======================================================================
+   * GLASS — §9. An accent, not the dominant language.
+   *
+   * Target: thin transparent material floating above the environment, not a
+   * white card with blur behind it. What is behind the panel must stay clearly
+   * perceptible.
+   *
+   * The opacity floor is set by readability, not taste. Charcoal text sits on
+   * whatever shows through, and the darkest point of the teal field is the
+   * worst case. Measured, compositing white over the stage gradient:
+   *
+   *     72% (previous) ... 10.39:1   opaque, reads as a white card
+   *     48% ............... 6.61:1   strong variant
+   *     36% ............... 5.12:1
+   *     32% ............... 4.69:1   <- AA body floor, chosen
+   *     28% ............... 4.30:1   fails AA for body text
+   *
+   * So 32%: less than half the previous opacity, still AA at body size.
+   * Going thinner means giving up readable body text on glass.
+   * ==================================================================== */
+
+  --glass-surface: color-mix(in srgb, var(--wws-white) 32%, transparent);
+  --glass-surface-teal: color-mix(in srgb, var(--wws-teal-wash) 34%, transparent);
+  --glass-surface-strong: color-mix(in srgb, var(--wws-white) 48%, transparent);
+
+  /* Border sits brighter than the surface, so the edge catches light like a
+     thin pane rather than drawing a line around a box. */
+  --glass-border: color-mix(in srgb, var(--wws-white) 48%, transparent);
+
+  /* A single bright hairline along the top edge. This is what reads as
+     "material with thickness" rather than "translucent rectangle". */
+  --glass-highlight: inset 0 1px 0 0 color-mix(in srgb, var(--wws-white) 60%, transparent);
+
+  --glass-blur: 28px; /* medium-strong; was 16px */
+  --glass-blur-strong: 40px;
+
+  /* Saturation compensates for the wash-out that heavy blurring causes, so the
+     teal behind the panel stays recognisably WWS teal. No new colour is
+     introduced — this only restores what the blur takes away.
+     Set at 160%: enough to preserve the environment underneath, stopping short
+     of artificially intensifying it. */
+  --glass-saturate: 160%;
+  --glass-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  --glass-filter-strong: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+
+  /* Separation from the background. Soft and wide, never a glow. */
+  --shadow-glass:
+    0 2px 8px color-mix(in srgb, var(--wws-charcoal) 8%, transparent),
+    0 16px 40px color-mix(in srgb, var(--wws-charcoal) 14%, transparent);
+
+  /* =======================================================================
+   * MOTION — §14 (which supersedes docs/MOTION_SYSTEM.md §3 for reveals)
+   * ==================================================================== */
+
+  --duration-micro: 150ms; /* range 120-180 */
+  --duration-standard: 210ms; /* range 180-240 */
+  --duration-card: 270ms; /* range 220-320 */
+  --duration-modal: 325ms; /* range 250-400 */
+  --duration-reveal: 675ms; /* range 600-750 */
+  --duration-hero: 950ms; /* range 700-1200 */
+
+  --ease-standard: cubic-bezier(0.22, 1, 0.36, 1); /* ease-out */
+  --ease-smooth: cubic-bezier(0.65, 0, 0.35, 1); /* ease-in-out */
+
+  /* Named so interactions stay consistent instead of each component
+     inventing its own distance. */
+  --motion-reveal-y: 32px;
+  --motion-card-lift: -5px;
+  --motion-image-zoom: 1.04; /* range 1.03-1.05 */
+  --motion-press-scale: 0.98;
+
+  /* =======================================================================
    * LAYOUT
-   *
-   * TODO: container width and section rhythm are composition decisions
-   * (docs/DESIGN_SYSTEM.md §6).
-   * -------------------------------------------------------------------- */
+   * ==================================================================== */
 
-  --container-max: 1200px; /* TODO */
-  --container-gutter: var(--space-4); /* TODO */
+  --container-max: 1200px;
+  --container-gutter: var(--space-5);
 }
 
-/* ===========================================================================
- * DARK SCHEME
- *
- * STRUCTURE ONLY. Whether WWS ships a dark theme at all — and what it looks
- * like if it does — is a Phase 2 decision. This block exists so that the
- * mechanism is proven and so no component hardcodes a colour that only works
- * in one scheme. Values are PLACEHOLDER neutrals throughout.
- * ======================================================================== */
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --color-background: #0b0b0d; /* PLACEHOLDER */
-    --color-background-secondary: #141417; /* PLACEHOLDER */
-
-    --color-surface: #141417; /* PLACEHOLDER */
-    --color-surface-elevated: #1c1c20; /* PLACEHOLDER */
-
-    --color-text-primary: #fafafa; /* PLACEHOLDER */
-    --color-text-secondary: #d4d4d8; /* PLACEHOLDER */
-    --color-text-muted: #a1a1aa; /* PLACEHOLDER */
-
-    --color-border: #27272a; /* PLACEHOLDER */
-    --color-border-subtle: #27272a; /* PLACEHOLDER */
-    --color-border-strong: #3f3f46; /* PLACEHOLDER */
+/* Hero bands. Only the token changes across breakpoints — components reference
+   var(--text-hero) and inherit the correct band automatically. */
+@media (min-width: 640px) {
+  :root {
+    --text-hero: clamp(3.5rem, 8vw, 5rem); /* tablet 56-80px */
   }
 }
 
-/* Explicit theme override, so a future toggle wins over the OS setting in both
- * directions. No values are asserted beyond the placeholders above. */
-:root[data-theme='dark'] {
-  --color-background: #0b0b0d; /* PLACEHOLDER */
-  --color-background-secondary: #141417; /* PLACEHOLDER */
+@media (min-width: 1024px) {
+  :root {
+    --text-hero: clamp(4rem, 8vw, 7rem); /* desktop 64-112px */
+  }
+}
 
-  --color-surface: #141417; /* PLACEHOLDER */
-  --color-surface-elevated: #1c1c20; /* PLACEHOLDER */
+/* ===========================================================================
+ * CONTRAST RECORD (WCAG 2.1, measured — not estimated)
+ *
+ * Body text
+ *   charcoal on ivory ................. 15.97:1  AAA
+ *   charcoal on white ................. 16.47:1  AAA
+ *   charcoal on yellow ................ 12.39:1  AAA
+ *
+ * Teal text on light
+ *   teal-deep  on ivory ...............  7.06:1  AAA
+ *   teal-text  on ivory ...............  5.87:1  AA  (body size OK)
+ *   teal-medium on ivory ..............  5.21:1  AA
+ *   teal-core  on ivory ...............  3.35:1  LARGE / UI ONLY
+ *
+ * On teal surfaces
+ *   white on teal-deep ................  7.28:1  AAA
+ *   white on teal-text ................  6.05:1  AA
+ *   white on teal-medium ..............  5.37:1  AA
+ *   white on teal-core ................  3.46:1  LARGE / UI ONLY
+ *   yellow on teal-deep ...............  5.48:1  AA
+ *
+ * Failing combinations — never use:
+ *   yellow text on ivory ..............  1.29:1
+ *   yellow text on white ..............  1.33:1
+ *   yellow on teal-core ...............  2.60:1
+ * ======================================================================== */
 
-  --color-text-primary: #fafafa; /* PLACEHOLDER */
-  --color-text-secondary: #d4d4d8; /* PLACEHOLDER */
-  --color-text-muted: #a1a1aa; /* PLACEHOLDER */
+/* ===========================================================================
+ * DARK SCHEME — INTENTIONALLY NOT IMPLEMENTED
+ *
+ * WWS is light-first. No dark palette exists and none should be added without
+ * the product owner's decision (docs/WWS_VISUAL_IDENTITY.md §20: never force
+ * everything into dark mode). The page renders in its own light identity
+ * regardless of OS setting.
+ *
+ * The architecture is nonetheless ready for one, and that readiness is the
+ * point of the two-layer split above:
+ *
+ *   Components reference SEMANTIC ROLES only (--color-surface,
+ *   --color-text-brand). No component knows which brand primitive sits behind
+ *   a role, and none contains a hex value. So a future dark layer is added by
+ *   re-pointing roles inside a single new block — no component changes:
+ *
+ *     :root[data-theme='dark'] {
+ *       --color-background: <dark primitive>;
+ *       --color-text-primary: <light primitive>;
+ *       ...
+ *     }
+ *
+ *   Two rules keep that door open, and both are enforced today:
+ *     1. Never style a component from --wws-* primitives directly.
+ *     2. Never define a colour only inside a media or [data-theme] block —
+ *        every role is declared in the base :root first.
+ *
+ * `color-scheme: light` tells the browser to render form controls, scrollbars
+ * and the like in light styling, so no native UI arrives dark by accident.
+ * ======================================================================== */
 
-  --color-border: #27272a; /* PLACEHOLDER */
-  --color-border-subtle: #27272a; /* PLACEHOLDER */
-  --color-border-strong: #3f3f46; /* PLACEHOLDER */
+:root {
+  color-scheme: light;
 }

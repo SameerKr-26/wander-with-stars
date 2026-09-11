@@ -40,13 +40,38 @@ architecture, environment validation, session refresh (`proxy.ts`),
 Not yet built: auth UI, database schema, trips, bookings, payments, community,
 AI, admin. Do not assume any of these exist.
 
-**The visual design does not exist and must not be invented.** Brand colour,
-typeface, spacing composition, glass treatment, shadows and motion style are
-the product owner's decisions, pending a design-direction session. Token names
-exist in `styles/tokens.css`; their values are placeholders marked
-`PLACEHOLDER` or `TODO`. Do not replace them, and do not build marketing or
-product UI, until those decisions are given. Treat `docs/DESIGN_SYSTEM.md` as a
-description of the vocabulary, not permission to implement a look.
+### Visual design — what is locked, what is not
+
+`docs/WWS_VISUAL_IDENTITY.md` is a **visual contract** (§22). Implement it;
+do not reinterpret it without approval.
+
+**Locked by the product owner — never change, never add siblings ad hoc:**
+
+| Token | Value | Use |
+|---|---|---|
+| `--wws-teal-core` | `#0497B2` | Fills, icons, large display. **Never body text** (3.35:1 on ivory) |
+| `--wws-teal-medium` | `#00758A` | Solid brand surfaces, buttons |
+| `--wws-teal-text` | `#006D7A` | Body-size teal text and links (5.87:1) |
+| `--wws-teal-deep` | `#005F73` | Strongest teal, dark surfaces (7.06:1) |
+| `--wws-yellow-core` | `#FEDE59` | Accent/fill only, 5–10% presence. **Never text on light** |
+| `--wws-ivory` | `#FFFBF5` | Page base |
+| `--wws-charcoal` | `#142126` | Default text |
+
+Primary typeface: **Manrope**, locked. Loaded via `next/font` in
+`app/layout.tsx` at weights 400/500/600/700/800 only.
+
+Never introduce a colour outside this set. Where a softer tone is needed,
+derive it with `color-mix()` from a locked primitive, as `styles/tokens.css`
+already does — that keeps the palette closed.
+
+Components reference **semantic roles** (`--color-text-brand`,
+`--color-surface`), never brand primitives and never raw hex.
+
+**Still not decided:** the type size scale (provisional, marked in the token
+file), and every component's visual design. Buttons, cards, image treatments,
+glass, motion, navigation and responsive primitives are milestones 5–10 and
+are **not** built. Do not build product UI or the homepage until the product
+owner approves the specimen at `/design-system`.
 
 ## Stack
 
