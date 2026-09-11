@@ -32,6 +32,16 @@ For implementation, treat these sampled values as the starting source of truth a
 
 Create a semantic palette around the logo colours, but keep the two core brand colours stable.
 
+> **Implementation note.** The sampled values are confirmed: measured directly
+> from the supplied artwork as `#0696B1` and `#FEDE5A`, within 2/255 of the
+> values above, with the difference attributable to JPEG compression. The
+> documented values are used as the source of truth.
+>
+> The brand asset itself is **pending replacement** and is not in version
+> control — see `public/brand/README.md`. Visual QA against the logo therefore
+> uses an untracked local working copy, and no production UI may depend on a
+> brand asset until a committed replacement exists.
+
 ## 3. Core palette
 
 ### Brand

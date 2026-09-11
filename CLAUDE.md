@@ -67,6 +67,14 @@ already does — that keeps the palette closed.
 Components reference **semantic roles** (`--color-text-brand`,
 `--color-surface`), never brand primitives and never raw hex.
 
+**Brand asset: pending.** `public/brand/` holds an untracked working copy that
+must never be committed — it is JPEG bytes with a `.PNG` extension, has no
+alpha channel, and carries source-tool metadata that would become permanent in
+this public repository. The product owner supplies the replacement, exported
+from the original artwork. Never redraw, recreate, trace, recolour, reproportion
+or AI-generate the mark. No production UI may depend on a brand asset until a
+committed replacement exists. See `public/brand/README.md`.
+
 **Still not decided:** the type size scale (provisional, marked in the token
 file), and every component's visual design. Buttons, cards, image treatments,
 glass, motion, navigation and responsive primitives are milestones 5–10 and

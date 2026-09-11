@@ -384,6 +384,10 @@ export default function DesignSystemSpecimen() {
             The wordmark is a custom treatment (§5), so an exact match is not expected. The question
             is whether Manrope sits comfortably beside it.
           </p>
+          <p className="text-text-muted" style={{ fontSize: 'var(--text-xs)' }}>
+            The logo above is an untracked working copy pending a properly exported brand asset, so
+            it will not render on a fresh clone. See <code>public/brand/README.md</code>.
+          </p>
         </div>
       </Section>
 
