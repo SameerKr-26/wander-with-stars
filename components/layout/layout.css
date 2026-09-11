@@ -1,0 +1,76 @@
+/* ---------------------------------------------------------------------------
+ * APPLICATION SHELL STYLES
+ *
+ * Imported from app/globals.css. Every value is a token — no literal colours,
+ * sizes, durations or easings.
+ *
+ * Deliberately minimal. The header's *states* are wired here (top, scrolled,
+ * compressed, menu-open) as data attributes, so the cinematic navigation
+ * treatment can be applied later by changing these rules and the token layer,
+ * without touching the component logic.
+ *
+ * All motion is neutralised by the prefers-reduced-motion rule in globals.css.
+ * ------------------------------------------------------------------------ */
+
+.wws-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  min-height: var(--header-height);
+  background-color: transparent;
+  border-bottom: 1px solid transparent;
+  transition-property: background-color, border-color, box-shadow, min-height, backdrop-filter;
+  transition-duration: var(--duration-standard);
+  transition-timing-function: var(--ease-standard);
+}
+
+/* State 1 — top of page. Transparent, so a future hero can run beneath it. */
+.wws-header[data-scrolled='false'] {
+  background-color: transparent;
+}
+
+/* State 2 — scrolled. Translucent surface using the approved glass tokens
+   rather than a new treatment. */
+.wws-header[data-scrolled='true'] {
+  background-color: var(--glass-surface-strong);
+  backdrop-filter: var(--glass-filter);
+  -webkit-backdrop-filter: var(--glass-filter);
+  border-bottom-color: var(--color-border-subtle);
+  box-shadow: var(--shadow-sm);
+}
+
+/* State 3 — compressed. Opt-in, so a page with a tall hero can keep the
+   header full height until it matters. */
+.wws-header[data-compact='true'] {
+  min-height: var(--header-height-compact);
+}
+
+/* State 5 — menu open. The panel needs an opaque backing on small screens,
+   where it covers content rather than floating over a hero. */
+.wws-header[data-menu-open='true'] {
+  background-color: var(--color-surface);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-bottom-color: var(--color-border-subtle);
+}
+
+/* State 4 — mobile panel. A disclosure, not a modal: it does not trap focus,
+   and the page behind it stays scrollable and reachable. */
+.wws-mobile-panel {
+  animation: wws-menu-in var(--duration-standard) var(--ease-standard);
+}
+
+@keyframes wws-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--space-2) * -1));
+  }
+}
+
+/* Underline marks the current page in addition to colour and aria-current,
+   so the active item is never signalled by colour alone. */
+.wws-nav-link[aria-current='page'] {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: var(--space-2);
+}

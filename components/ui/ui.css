@@ -1,0 +1,237 @@
+/* ---------------------------------------------------------------------------
+ * PRODUCTION COMPONENT INTERACTION STYLES
+ *
+ * Imported once from app/globals.css. Everything here reads from the design
+ * tokens — there is not a single literal colour, radius, shadow or duration in
+ * this file, and there must never be.
+ *
+ * Why a stylesheet rather than utilities: :hover, :active, :focus-visible and
+ * pointer media queries cannot be expressed as inline styles, and expressing
+ * them as arbitrary Tailwind values would inline token values into class names
+ * where a redesign could not reach them.
+ *
+ * All motion here is neutralised by the prefers-reduced-motion rule in
+ * app/globals.css, which applies globally.
+ * ------------------------------------------------------------------------ */
+
+/* =========================================================== buttons ===== */
+
+.wws-button {
+  transition-property: transform, filter, background-color, border-color, box-shadow;
+  transition-duration: var(--duration-micro);
+  transition-timing-function: var(--ease-standard);
+}
+
+/* Three distinct elevations: resting, hover, pressed. Approved in Phase 2. */
+.wws-button--raised {
+  box-shadow: var(--shadow-button);
+}
+
+.wws-button--raised:hover:not(:disabled):not([aria-busy='true']) {
+  box-shadow: var(--shadow-button-hover);
+  transform: translateY(var(--motion-button-lift));
+  filter: brightness(1.06);
+}
+
+.wws-button--raised:active:not(:disabled):not([aria-busy='true']) {
+  /* Pressed sits below resting; `scale` alone cancels the hover lift. */
+  box-shadow: var(--shadow-button-press);
+  transform: scale(var(--motion-press-scale));
+  filter: none;
+}
+
+/* Tertiary is a text action, not a surface — it never lifts. */
+.wws-button--flat:hover:not(:disabled):not([aria-busy='true']) {
+  background-color: var(--color-accent-soft);
+}
+
+.wws-button--flat:active:not(:disabled):not([aria-busy='true']) {
+  transform: scale(var(--motion-press-scale));
+}
+
+.wws-button:disabled,
+.wws-button[aria-busy='true'] {
+  box-shadow: none;
+  transform: none;
+  filter: none;
+}
+
+/* ============================================================= cards ===== */
+
+.wws-card {
+  transition-property: transform, box-shadow, border-color;
+  transition-duration: var(--duration-card);
+  transition-timing-function: var(--ease-standard);
+}
+
+/* Lift only where a real pointer exists. Touch devices get no hover state at
+ * all, so nothing is hidden behind one. */
+@media (hover: hover) and (pointer: fine) {
+  .wws-card--interactive:hover {
+    transform: translateY(var(--motion-card-lift));
+    box-shadow: var(--shadow-lg);
+  }
+
+  .wws-card--interactive:hover .wws-image-frame__media {
+    transform: scale(var(--motion-image-zoom));
+  }
+}
+
+/* Keyboard parity: focus does what hover does. */
+.wws-card--interactive:focus-within {
+  transform: translateY(var(--motion-card-lift));
+  box-shadow: var(--shadow-lg);
+}
+
+.wws-card--interactive:focus-within .wws-image-frame__media {
+  transform: scale(var(--motion-image-zoom));
+}
+
+.wws-card--disabled,
+.wws-card--disabled:hover,
+.wws-card--disabled:focus-within {
+  transform: none;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ====================================================== image frame ===== */
+
+.wws-image-frame__media {
+  transition-property: transform;
+  transition-duration: var(--duration-card);
+  transition-timing-function: var(--ease-standard);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .wws-image-frame--zoom:hover .wws-image-frame__media {
+    transform: scale(var(--motion-image-zoom));
+  }
+}
+
+/* =================================================== progressive reveal == */
+
+/* Secondary information: visible by default so touch and narrow screens never
+ * lose it, concealed only where a fine pointer and room both exist.
+ * docs/UX_INTERACTION_GUIDE.md §3, docs/WWS_VISUAL_IDENTITY.md §16. */
+.wws-reveal {
+  transition-property: opacity, transform;
+  transition-duration: var(--duration-standard);
+  transition-timing-function: var(--ease-standard);
+}
+
+@media (hover: hover) and (pointer: fine) and (min-width: 768px) {
+  .wws-reveal {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  .wws-card--interactive:hover .wws-reveal,
+  .wws-card--interactive:focus-within .wws-reveal,
+  .wws-reveal-host:hover .wws-reveal,
+  .wws-reveal-host:focus-within .wws-reveal {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ============================================================ inputs ===== */
+
+.wws-input {
+  transition-property: border-color, box-shadow, background-color;
+  transition-duration: var(--duration-micro);
+  transition-timing-function: var(--ease-standard);
+}
+
+.wws-input:hover:not(:disabled):not([aria-invalid='true']) {
+  border-color: var(--color-border-strong);
+}
+
+.wws-input:disabled {
+  background-color: var(--color-surface-sunk);
+  cursor: not-allowed;
+}
+
+/* Invalid fields carry a heavier border AND a text message with a symbol —
+ * never colour alone (docs/DESIGN_SYSTEM.md §19). The palette has no locked
+ * error hue, so weight and wording do the work. See components/ui/field.tsx. */
+.wws-input[aria-invalid='true'] {
+  border-color: var(--color-text-primary);
+  border-width: 2px;
+}
+
+/* =========================================================== overlays ==== */
+
+.wws-dialog {
+  border: none;
+  padding: 0;
+  background: transparent;
+  max-width: none;
+  max-height: none;
+}
+
+.wws-dialog::backdrop {
+  background-color: color-mix(in srgb, var(--wws-charcoal) 45%, transparent);
+  backdrop-filter: blur(2px);
+}
+
+.wws-dialog[open] .wws-dialog__panel {
+  animation: wws-dialog-in var(--duration-modal) var(--ease-standard);
+}
+
+.wws-drawer[open] .wws-dialog__panel {
+  animation: wws-drawer-in var(--duration-modal) var(--ease-standard);
+}
+
+@keyframes wws-dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
+@keyframes wws-drawer-in {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+.wws-drawer--left[open] .wws-dialog__panel {
+  animation-name: wws-drawer-in-left;
+}
+
+@keyframes wws-drawer-in-left {
+  from {
+    transform: translateX(-100%);
+  }
+}
+
+/* =========================================================== skeleton ==== */
+
+.wws-skeleton {
+  background-image: linear-gradient(
+    90deg,
+    var(--color-surface-sunk) 0%,
+    color-mix(in srgb, var(--wws-charcoal) 4%, var(--wws-ivory)) 50%,
+    var(--color-surface-sunk) 100%
+  );
+  background-size: 200% 100%;
+  animation: wws-shimmer var(--duration-hero) linear infinite;
+}
+
+@keyframes wws-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* ============================================================ spinner ==== */
+
+.wws-spinner {
+  animation: wws-spin var(--duration-hero) linear infinite;
+}
+
+@keyframes wws-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

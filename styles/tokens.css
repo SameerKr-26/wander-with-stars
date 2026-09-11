@@ -284,6 +284,14 @@
 
   --container-max: 1200px;
   --container-gutter: var(--space-5);
+
+  /* Header height. Layout infrastructure rather than an aesthetic choice: a
+     sticky header needs a known height so anchored content is not hidden
+     behind it (see scroll-padding-top in app/globals.css). Both values come
+     from the spacing scale — no new numbers are introduced. Refine with the
+     navigation visual pass. */
+  --header-height: var(--space-16); /* 64px */
+  --header-height-compact: var(--space-12); /* 48px */
 }
 
 /* Hero bands. Only the token changes across breakpoints — components reference

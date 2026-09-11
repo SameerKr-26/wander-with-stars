@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import '../styles/tokens.css';
+@import '../components/ui/ui.css';
 
 /* ---------------------------------------------------------------------------
  * GLOBAL BASE
@@ -51,6 +52,24 @@
   --font-body: var(--font-body);
   --font-mono: var(--font-mono);
 
+  /* The locked type scale, exposed as utilities so `text-xl` resolves through
+   * the token rather than Tailwind's default. Components must not carry raw
+   * font sizes. Weights are applied by the Typography primitives, which read
+   * --weight-* directly — exposing those here would collide with the
+   * font-family namespace (`font-body` would be ambiguous). */
+  --text-xs: var(--text-xs);
+  --text-sm: var(--text-sm);
+  --text-base: var(--text-base);
+  --text-lg: var(--text-lg);
+  --text-xl: var(--text-xl);
+  --text-2xl: var(--text-2xl);
+  --text-3xl: var(--text-3xl);
+  --text-4xl: var(--text-4xl);
+  --text-5xl: var(--text-5xl);
+  --text-6xl: var(--text-6xl);
+  --text-display: var(--text-display);
+  --text-hero: var(--text-hero);
+
   --radius-panel: var(--radius-panel);
   --radius-card: var(--radius-card);
   --radius-control: var(--radius-control);
@@ -63,6 +82,13 @@
 
   --ease-standard: var(--ease-standard);
   --ease-smooth: var(--ease-smooth);
+}
+
+/* A sticky header would otherwise cover the top of anything scrolled to via an
+ * anchor or the skip link. Reserving its height here fixes that once, for
+ * every page, rather than per-target. */
+html {
+  scroll-padding-top: calc(var(--header-height) + var(--space-4));
 }
 
 body {
