@@ -11,11 +11,12 @@ import type { NavItem } from '@/lib/navigation/site-navigation';
  * next/navigation needs stubbing: usePathname has no router in a unit test.
  * Mocking it also lets active-state be driven directly.
  *
- * Note on current state: no public page exists beyond "/", so navigation is
- * legitimately empty and the header renders only the wordmark. Tests below are
- * split between what must hold now, and what must hold once destinations ship
- * — the latter driven through a mocked navigation config rather than by
- * inventing routes.
+ * As of Phase 3.3, Trips/Stories/Creators/About/Find My Trip are real —
+ * "real navigation" below asserts the actual default config renders them, and
+ * that Community/Login (no page yet) still don't. "header behaviour, given
+ * any items" exercises menu mechanics (open/close/Escape/focus) against
+ * injected items, independent of which routes happen to be live, so it stays
+ * valid as navigation content keeps changing.
  */
 const pathname = vi.hoisted(() => ({ current: '/' }));
 
@@ -47,32 +48,66 @@ describe('landmarks and labelling', () => {
   });
 });
 
-describe('current state — nothing is advertised that does not exist', () => {
-  it('renders no navigation links, because no public page exists yet', () => {
+describe('real navigation — Phase 3.3', () => {
+  it('renders every implemented destination', () => {
     render(<SiteHeader />);
     const banner = screen.getByRole('banner');
-    // Only the wordmark link.
-    expect(within(banner).getAllByRole('link')).toHaveLength(1);
+
+    for (const label of ['Home', 'Trips', 'Stories', 'Creators', 'About']) {
+      expect(within(banner).getAllByRole('link', { name: label }).length).toBeGreaterThan(0);
+    }
+    expect(within(banner).getAllByRole('link', { name: 'Find My Trip' }).length).toBeGreaterThan(0);
   });
 
-  it('renders no empty navigation landmark', () => {
+  it('renders Home pointing at the real root route', () => {
     render(<SiteHeader />);
-    expect(screen.queryByRole('navigation', { name: 'Primary' })).not.toBeInTheDocument();
+    const banner = screen.getByRole('banner');
+    expect(within(banner).getAllByRole('link', { name: 'Home' })[0]).toHaveAttribute('href', '/');
   });
 
-  it('renders no menu button that would open onto nothing', () => {
+  it('marks Home active on "/"', () => {
+    pathname.current = '/';
     render(<SiteHeader />);
-    expect(screen.queryByRole('button', { name: 'Menu' })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Home' })[0]).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
   });
 
-  it('exposes no link to an unbuilt destination', () => {
+  it('does not mark Home active on other pages', () => {
+    pathname.current = '/about';
     render(<SiteHeader />);
-    for (const href of ['/trips', '/community', '/stories', '/about', '/login', '/explore']) {
-      expect(document.querySelector(`a[href="${href}"]`)).toBeNull();
+    expect(screen.getAllByRole('link', { name: 'Home' })[0]).not.toHaveAttribute('aria-current');
+  });
+
+  it('never advertises Community or Log in — no page exists for either', () => {
+    render(<SiteHeader />);
+    const banner = screen.getByRole('banner');
+    expect(within(banner).queryByRole('link', { name: 'Community' })).not.toBeInTheDocument();
+    expect(within(banner).queryByRole('link', { name: 'Log in' })).not.toBeInTheDocument();
+  });
+
+  it('has no dead internal links — every rendered href resolves to an implemented route', () => {
+    render(<SiteHeader />);
+    const banner = screen.getByRole('banner');
+    const hrefs = within(banner)
+      .getAllByRole('link')
+      .map((link) => link.getAttribute('href'));
+
+    // /trips/[slug] is dynamic and reached from a card, not advertised here,
+    // so the only valid hrefs from the header are these exact roots.
+    const validRoots = new Set(['/', '/trips', '/stories', '/creators', '/about']);
+    for (const href of hrefs) {
+      expect(validRoots.has(href ?? '')).toBe(true);
     }
   });
 
-  it('still exposes scroll state for styling', () => {
+  it('renders a real, populated mobile menu trigger now that destinations exist', () => {
+    render(<SiteHeader />);
+    expect(screen.getByRole('button', { name: 'Menu' })).toBeInTheDocument();
+  });
+
+  it('exposes scroll state for styling', () => {
     render(<SiteHeader />);
     expect(screen.getByRole('banner')).toHaveAttribute('data-scrolled', 'false');
   });

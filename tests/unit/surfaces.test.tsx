@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { Badge, Avatar } from '@/components/ui/badge';
-import { Card, CardAction } from '@/components/ui/card';
+import { CardAction } from '@/components/ui/card-action';
+import { Card } from '@/components/ui/card';
 import { EmptyState, ErrorState, Skeleton, Spinner } from '@/components/ui/feedback';
 import { GlassPanel } from '@/components/ui/glass-panel';
 

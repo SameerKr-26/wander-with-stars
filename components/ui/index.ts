@@ -16,8 +16,11 @@ export type { BadgeProps, AvatarProps } from './badge';
 export { Button, IconButton } from './button';
 export type { ButtonProps, IconButtonProps } from './button';
 
-export { Card, CardAction } from './card';
-export type { CardProps, CardActionProps } from './card';
+export { Card } from './card';
+export type { CardProps } from './card';
+
+export { CardAction } from './card-action';
+export type { CardActionProps } from './card-action';
 
 export { Dialog, Drawer } from './dialog';
 export type { DrawerProps } from './dialog';
@@ -30,6 +33,9 @@ export type { FieldProps, InputProps, SelectProps, TextareaProps } from './field
 
 export { GlassPanel } from './glass-panel';
 export type { GlassPanelProps } from './glass-panel';
+
+export { LinkButton } from './link-button';
+export type { LinkButtonProps } from './link-button';
 
 export { ImageFrame, ImageScrim } from './image-frame';
 export type { ImageFrameProps } from './image-frame';

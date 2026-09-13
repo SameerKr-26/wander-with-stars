@@ -1,3 +1,5 @@
+'use client';
+
 import type { ComponentPropsWithoutRef, CSSProperties, ReactNode } from 'react';
 
 import { cn } from '@/lib/utils';
@@ -6,6 +8,13 @@ import { Spinner } from './feedback';
 
 /**
  * Button.
+ *
+ * Client Component: it attaches onClick to a native element, and React
+ * Server Components cannot serialize a function prop across the server/client
+ * boundary. Any component that renders `<button onClick>` (or similar) needs
+ * this directive — omitting it fails at build time the first time the
+ * component is actually used inside a page route, not before, which is how
+ * this was missed until now (see components/ui/card.tsx for the same fix).
  *
  * Implements the approved three-elevation depth system: resting, hover
  * (stronger shadow plus a 1px lift), pressed (reduced shadow plus 0.98 scale).
@@ -63,6 +72,13 @@ const SIZE_STYLE: Record<ButtonSize, CSSProperties> = {
   lg: { padding: 'var(--space-4) var(--space-6)', fontSize: 'var(--text-base)' },
 };
 
+const SHARED_STYLE: CSSProperties = {
+  borderRadius: 'var(--radius-control)',
+  fontFamily: 'var(--font-body)',
+  fontWeight: 'var(--weight-label)',
+  lineHeight: 'var(--leading-snug)',
+};
+
 export interface ButtonProps extends Omit<ComponentPropsWithoutRef<'button'>, 'color'> {
   variant?: ButtonVariant;
   size?: ButtonSize;
@@ -111,10 +127,7 @@ export function Button({
       style={{
         ...VARIANT_STYLE[variant],
         ...SIZE_STYLE[size],
-        borderRadius: 'var(--radius-control)',
-        fontFamily: 'var(--font-body)',
-        fontWeight: 'var(--weight-label)',
-        lineHeight: 'var(--leading-snug)',
+        ...SHARED_STYLE,
         ...(loading ? { cursor: 'progress' } : {}),
         ...style,
       }}

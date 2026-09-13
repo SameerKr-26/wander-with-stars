@@ -31,9 +31,15 @@ const RATIO: Record<AspectRatio, string> = {
 type Focal = 'center' | 'top' | 'bottom' | 'left' | 'right';
 
 export interface ImageFrameProps {
-  src: ImageProps['src'];
-  /** Empty string marks the image as decorative. Never omit it. */
-  alt: string;
+  /**
+   * Omit when no real media exists yet. Rather than render a broken or
+   * invented image, the frame falls back to `children` alone inside the same
+   * aspect-ratio box — the caller supplies an honest placeholder. This is the
+   * seam a future Supabase Storage URL fills in without a layout change.
+   */
+  src?: ImageProps['src'] | undefined;
+  /** Required whenever `src` is given. Empty string marks it as decorative. */
+  alt?: string | undefined;
   ratio?: AspectRatio;
   focal?: Focal;
   radius?: 'control' | 'card' | 'panel' | 'none';
@@ -73,15 +79,17 @@ export function ImageFrame({
         maxWidth: '100%',
       }}
     >
-      <Image
-        src={src}
-        alt={alt}
-        fill
-        sizes={sizes}
-        priority={priority}
-        className="wws-image-frame__media"
-        style={{ objectFit: 'cover', objectPosition: focal }}
-      />
+      {src ? (
+        <Image
+          src={src}
+          alt={alt ?? ''}
+          fill
+          sizes={sizes}
+          priority={priority}
+          className="wws-image-frame__media"
+          style={{ objectFit: 'cover', objectPosition: focal }}
+        />
+      ) : null}
       {children}
     </div>
   );

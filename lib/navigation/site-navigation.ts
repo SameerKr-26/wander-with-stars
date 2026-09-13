@@ -34,7 +34,12 @@ import { FEATURES, type FeatureName } from '@/lib/features';
  * navigation, so only navigable roots belong here.
  */
 const IMPLEMENTED_ROUTES: ReadonlySet<string> = new Set<string>([
-  '/', // placeholder shell; the real homepage is a later milestone
+  '/', // real homepage as of Phase 3.3
+  '/trips', // listing — trip detail lives at /trips/[slug], not in this set
+  '/about',
+  '/stories',
+  '/creators',
+  '/contact',
 ]);
 
 /** Whether a navigation destination has a real page behind it. */
@@ -72,9 +77,11 @@ export interface NavItem {
  * a different destination or an interstitial — without a navigation redesign.
  */
 export const PRIMARY_NAV: readonly NavItem[] = [
-  { label: 'Explore Trips', href: '/trips', feature: 'tripDiscovery', matchNested: true },
-  { label: 'Community', href: '/community', feature: 'community', matchNested: true },
+  { label: 'Home', href: '/' },
+  { label: 'Trips', href: '/trips', feature: 'tripDiscovery', matchNested: true },
   { label: 'Stories', href: '/stories', feature: 'stories', matchNested: true },
+  { label: 'Creators', href: '/creators', feature: 'creators', matchNested: true },
+  { label: 'Community', href: '/community', feature: 'community', matchNested: true },
   { label: 'About', href: '/about' },
   { label: 'Log in', href: '/login', feature: 'travellerAccounts', audience: 'guest' },
   { label: 'Find My Trip', href: '/trips', feature: 'tripDiscovery', emphasis: 'primary' },
@@ -95,10 +102,10 @@ export const FOOTER_NAV: readonly NavGroup[] = [
   {
     title: 'Explore',
     items: [
-      { label: 'Explore Trips', href: '/trips', feature: 'tripDiscovery' },
-      { label: 'Community', href: '/community', feature: 'community' },
+      { label: 'Trips', href: '/trips', feature: 'tripDiscovery' },
       { label: 'Stories', href: '/stories', feature: 'stories' },
-      { label: 'Hosts', href: '/hosts', feature: 'creators' },
+      { label: 'Creators', href: '/creators', feature: 'creators' },
+      { label: 'Community', href: '/community', feature: 'community' },
     ],
   },
   {

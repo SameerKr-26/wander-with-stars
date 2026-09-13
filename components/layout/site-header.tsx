@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 
-import { Button } from '@/components/ui';
+import { LinkButton } from '@/components/ui';
 import {
   isActive,
   visibleItems,
@@ -170,15 +170,9 @@ export function SiteHeader({
 
         <div className="flex items-center" style={{ gap: 'var(--space-3)' }}>
           {primaryAction ? (
-            <Button
-              size="sm"
-              className="hidden md:inline-flex"
-              onClick={() => {
-                window.location.href = primaryAction.href;
-              }}
-            >
+            <LinkButton href={primaryAction.href} size="sm" className="hidden md:inline-flex">
               {primaryAction.label}
-            </Button>
+            </LinkButton>
           ) : null}
 
           {hasMobileMenu ? (
@@ -232,9 +226,9 @@ export function SiteHeader({
               ))}
               {primaryAction ? (
                 <li style={{ marginTop: 'var(--space-3)' }}>
-                  <Button fullWidth onClick={() => (window.location.href = primaryAction.href)}>
+                  <LinkButton href={primaryAction.href} fullWidth>
                     {primaryAction.label}
-                  </Button>
+                  </LinkButton>
                 </li>
               ) : null}
             </ul>

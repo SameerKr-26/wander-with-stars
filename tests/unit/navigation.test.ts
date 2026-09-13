@@ -19,26 +19,36 @@ import {
  *      its entries entirely, rather than disabling them or leaving a gap.
  *   2. Production navigation never advertises a route that does not exist.
  *
- * `/` is currently the only implemented route, so it stands in for "a page
- * that exists" throughout. Items are built inline rather than imported from
- * the live config, so these describe behaviour rather than whichever flags and
- * routes happen to be current.
+ * As of Phase 3.3, `/`, `/trips`, `/about`, `/stories`, `/creators` and
+ * `/contact` are implemented; `/community` and `/login` are not (no page
+ * exists for either yet). Fixtures below use `/community` as the "genuinely
+ * unbuilt" example throughout, so these tests stay accurate as more routes
+ * ship. Items are built inline rather than imported from the live config,
+ * so these describe behaviour rather than whichever flags happen to be set.
  */
 
 const home: NavItem = { label: 'Home', href: '/' };
-const unbuilt: NavItem = { label: 'About', href: '/about' };
+const unbuilt: NavItem = { label: 'Community', href: '/community' };
 const guestOnly: NavItem = { label: 'Log in', href: '/', audience: 'guest' };
 const memberOnly: NavItem = { label: 'My trips', href: '/', audience: 'authenticated' };
-const gated: NavItem = { label: 'Hosts', href: '/', feature: 'creators' };
+// 'community' stays off by default, unlike 'creators'/'stories' which are on
+// as of Phase 3.3 — using it here keeps this fixture testing a genuinely
+// disabled feature regardless of which flags default to true later.
+const gated: NavItem = { label: 'Community feature item', href: '/', feature: 'community' };
 
 describe('route existence', () => {
   it('recognises an implemented route', () => {
     expect(isImplemented('/')).toBe(true);
+    expect(isImplemented('/trips')).toBe(true);
+    expect(isImplemented('/about')).toBe(true);
+    expect(isImplemented('/stories')).toBe(true);
+    expect(isImplemented('/creators')).toBe(true);
+    expect(isImplemented('/contact')).toBe(true);
   });
 
-  it('treats unbuilt destinations as not implemented', () => {
-    expect(isImplemented('/trips')).toBe(false);
+  it('treats destinations with no page yet as not implemented', () => {
     expect(isImplemented('/community')).toBe(false);
+    expect(isImplemented('/login')).toBe(false);
   });
 
   it('hides items whose page does not exist yet, so no link can 404', () => {
@@ -46,13 +56,24 @@ describe('route existence', () => {
   });
 
   it('hides unbuilt destinations even when their feature is enabled', () => {
-    // tripDiscovery is on, but /trips has no page yet.
-    const trips: NavItem = { label: 'Explore Trips', href: '/trips', feature: 'tripDiscovery' };
-    expect(visibleItems([trips])).toEqual([]);
+    // tripDiscovery is always on, but /community has no page — the route
+    // gate must fire independently of the feature gate.
+    const communityWithAllowedFeature: NavItem = {
+      label: 'Community (test)',
+      href: '/community',
+      feature: 'tripDiscovery',
+    };
+    expect(visibleItems([communityWithAllowedFeature])).toEqual([]);
   });
 
   it('is an allowlist, so an unknown route is hidden rather than exposed', () => {
     expect(isImplemented('/anything-not-listed')).toBe(false);
+  });
+
+  it('does not expose nested trip detail pages as a navigation root', () => {
+    // /trips/[slug] pages exist, but are reached from a trip card, not the
+    // nav allowlist — a dynamic path was never meant to be a menu item.
+    expect(isImplemented('/trips/sample-northern-vietnam')).toBe(false);
   });
 });
 
@@ -91,10 +112,25 @@ describe('primary navigation config', () => {
     expect(PRIMARY_NAV.filter((item) => item.emphasis === 'primary')).toHaveLength(1);
   });
 
-  it('exposes nothing while no public page exists yet', () => {
-    // Correct for the current state: only "/" is implemented, and it is not a
-    // navigation item. This will change as real pages ship.
-    expect(visibleItems(PRIMARY_NAV)).toEqual([]);
+  it('exposes exactly the routes that are actually implemented, signed out, in the required order', () => {
+    // Trips, Stories, Creators and About all have real pages as of Phase 3.3.
+    // Community has no page yet; Login is gated on travellerAccounts (off).
+    const labels = visibleItems(PRIMARY_NAV).map((item) => item.label);
+    expect(labels).toEqual(['Home', 'Trips', 'Stories', 'Creators', 'About', 'Find My Trip']);
+  });
+
+  it('includes Home, pointing at the real root route', () => {
+    const homeItem = PRIMARY_NAV.find((item) => item.label === 'Home');
+    expect(homeItem?.href).toBe('/');
+    // No hash anchor, and no feature/audience gate — Home is always available.
+    expect(homeItem?.feature).toBeUndefined();
+    expect(homeItem?.audience).toBeUndefined();
+  });
+
+  it('never exposes Community or Log in — no page exists for either', () => {
+    const labels = visibleItems(PRIMARY_NAV, { isAuthenticated: false }).map((item) => item.label);
+    expect(labels).not.toContain('Community');
+    expect(labels).not.toContain('Log in');
   });
 });
 
