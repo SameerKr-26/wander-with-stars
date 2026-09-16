@@ -13,28 +13,86 @@
  * ------------------------------------------------------------------------ */
 
 .wws-header {
+  /* Navbar-specific material. Opacity (80% white) and blur (72px) composed
+     from the same locked --wws-white primitive and the existing
+     --glass-saturate token via the same color-mix()/token pattern used
+     throughout styles/tokens.css. Scoped here rather than promoted to the
+     global token layer: this is a navigation-legibility need specific to
+     text passing directly behind the bar, not a new design-system glass tier
+     other surfaces should reach for.
+
+     Root cause of the "blur does nothing" symptom (see history: 48%/28px ->
+     64%/40px -> 80%/44px -> 80%/72px, all ineffective): this project has no
+     browserslist config, so Next's Lightning CSS build falls back to a
+     target set for which it treats standard `backdrop-filter` as
+     unsupported and STRIPS the unprefixed declaration at build time, keeping
+     only `-webkit-backdrop-filter` (verified against the compiled output in
+     .next). No amount of raising the blur value fixes that — the standard
+     property never reached the browser. Rather than change the global build
+     target (out of scope here), `backdrop-filter` / `-webkit-backdrop-filter`
+     are applied as an inline style on .wws-header-surface below, in
+     SiteHeader — inline styles are never passed through the CSS build
+     pipeline, so they can't be stripped. Everything else here (surface
+     color, border, shadow) was never affected by the bug and stays in this
+     stylesheet. */
+  --wws-header-glass-surface: color-mix(in srgb, var(--wws-white) 80%, transparent);
+  --wws-header-glass-filter: blur(72px) saturate(var(--glass-saturate));
+
   position: sticky;
   top: 0;
   z-index: 50;
   min-height: var(--header-height);
   background-color: transparent;
-  border-bottom: 1px solid transparent;
-  transition-property: background-color, border-color, box-shadow, min-height, backdrop-filter;
+  transition-property: min-height;
   transition-duration: var(--duration-standard);
   transition-timing-function: var(--ease-standard);
 }
 
+/* Positioning context for the material layer, sized to the visible bar (not
+   the mobile panel below it, which is a sibling — untouched). */
+.wws-header-bar {
+  position: relative;
+  min-height: inherit;
+}
+
+/* Dedicated material/background layer, painted behind .wws-header-content.
+   Isolated from .wws-header's own min-height transition (a layout-affecting
+   property) so the compositor can give this layer a stable surface purely
+   for the tint + blur, per docs on restructuring when direct application is
+   unreliable. Carries background/border/shadow; backdrop-filter itself is
+   set inline by SiteHeader (see note above). */
+.wws-header-surface {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  isolation: isolate;
+  background-color: transparent;
+  border-bottom: 1px solid transparent;
+  transition-property:
+    background-color,
+    border-color,
+    box-shadow,
+    backdrop-filter,
+    -webkit-backdrop-filter;
+  transition-duration: var(--duration-standard);
+  transition-timing-function: var(--ease-standard);
+}
+
+.wws-header-content {
+  position: relative;
+  z-index: 1;
+}
+
 /* State 1 — top of page. Transparent, so a future hero can run beneath it. */
-.wws-header[data-scrolled='false'] {
+.wws-header[data-scrolled='false'] .wws-header-surface {
   background-color: transparent;
 }
 
 /* State 2 — scrolled. Translucent surface using the approved glass tokens
    rather than a new treatment. */
-.wws-header[data-scrolled='true'] {
-  background-color: var(--glass-surface-strong);
-  backdrop-filter: var(--glass-filter);
-  -webkit-backdrop-filter: var(--glass-filter);
+.wws-header[data-scrolled='true'] .wws-header-surface {
+  background-color: var(--wws-header-glass-surface);
   border-bottom-color: var(--color-border-subtle);
   box-shadow: var(--shadow-sm);
 }
@@ -47,11 +105,10 @@
 
 /* State 5 — menu open. The panel needs an opaque backing on small screens,
    where it covers content rather than floating over a hero. */
-.wws-header[data-menu-open='true'] {
+.wws-header[data-menu-open='true'] .wws-header-surface {
   background-color: var(--color-surface);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
   border-bottom-color: var(--color-border-subtle);
+  box-shadow: none;
 }
 
 /* State 4 — mobile panel. A disclosure, not a modal: it does not trap focus,

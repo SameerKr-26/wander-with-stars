@@ -37,6 +37,7 @@ export const DEV_UPCOMING_TRIPS: TripPreview[] = [
     heroMedia: { kind: 'placeholder' },
     styleScores: { adventure: 70, social: 85, culture: 60 },
     travellerCount: 14,
+    tagline: 'Six nights across Hanoi and Ha Long Bay, with a social, adventure-leaning group.',
   },
   {
     id: 'dev-trip-2',
@@ -52,6 +53,7 @@ export const DEV_UPCOMING_TRIPS: TripPreview[] = [
     heroMedia: { kind: 'placeholder' },
     styleScores: { relaxation: 75, social: 65, culture: 55 },
     travellerCount: 19,
+    tagline: 'Five slower-paced nights around Ubud and Canggu, built for unwinding together.',
   },
   {
     id: 'dev-trip-3',
@@ -67,6 +69,8 @@ export const DEV_UPCOMING_TRIPS: TripPreview[] = [
     heroMedia: { kind: 'placeholder' },
     styleScores: { adventure: 90, social: 60 },
     travellerCount: 9,
+    tagline:
+      'Seven nights through Tbilisi and Kazbegi — the most adventure-heavy departure open right now.',
   },
 ];
 

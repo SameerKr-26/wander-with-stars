@@ -1,0 +1,110 @@
+/* ---------------------------------------------------------------------------
+ * TRIP DISCOVERY — presentation styles (Phase 3.4 editorial redesign)
+ *
+ * Imported once from trip-discovery-experience.tsx, the client boundary that
+ * owns this feature. Every value is a token — no literal colours, sizes,
+ * durations or easings — matching components/layout/layout.css and
+ * components/ui/ui.css.
+ *
+ * All motion here is neutralised by the prefers-reduced-motion rule in
+ * app/globals.css, which applies globally.
+ * ------------------------------------------------------------------------ */
+
+/* ============================================ alternating journey list === */
+
+/* Mobile always shows the image first — alternating sides only makes sense
+   once there is a second column to alternate into (Phase 3.4 §10: "no
+   desktop layout simply collapsed without thought"). The lg breakpoint here
+   matches the `lg:grid-cols-2` utility on the same element.
+
+   `position: relative` here is what the `lg:absolute lg:inset-0` on the
+   ImageFrame inside it (journey-entry.tsx) positions against — see the note
+   there for why the image is absolutely positioned at desktop widths: it is
+   the actual fix for the card's resting height being dictated by the image
+   rather than its own content. */
+.wws-journey-media {
+  position: relative;
+  order: 1;
+}
+
+.wws-journey-content {
+  order: 2;
+}
+
+@media (min-width: 1024px) {
+  .wws-journey-grid--reverse .wws-journey-media {
+    order: 2;
+  }
+
+  .wws-journey-grid--reverse .wws-journey-content {
+    order: 1;
+  }
+}
+
+/* ==================================================== scroll reveal ====== */
+
+/* First WWS travel motion layer (Phase 3.4 §8): a restrained reveal as
+   editorial trip content enters the viewport, not a general animation
+   system. JS (journey-entry.tsx) toggles --visible; reduced motion is
+   handled both there (skips straight to visible) and here (the global
+   transition-duration override in app/globals.css collapses this to
+   effectively instant either way). */
+.wws-reveal-media {
+  opacity: 0;
+  transform: scale(1.05);
+  transition-property: opacity, transform;
+  transition-duration: var(--duration-reveal);
+  transition-timing-function: var(--ease-smooth);
+}
+
+.wws-reveal-media--visible {
+  opacity: 1;
+  transform: none;
+}
+
+.wws-reveal-text {
+  opacity: 0;
+  transform: translateY(var(--space-4));
+  transition-property: opacity, transform;
+  transition-duration: var(--duration-reveal);
+  transition-timing-function: var(--ease-smooth);
+}
+
+.wws-reveal-text--visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* ============================================== secondary info reveal ==== */
+
+/* The compact-resting / expand-on-hover-or-focus mechanism for secondary
+   information (style, host, the "Explore journey" link) now lives in
+   components/ui/ui.css as `.wws-reveal` / `.wws-reveal-content` — the same
+   shared primitive components/marketing/trip-card.tsx uses, so the two
+   surfaces have one interaction implementation rather than two that could
+   drift (Phase 3.4 "trip card consistency" fix). See that file's comment
+   for why it is two classes (a grid-rows collapse plus a separate fade)
+   rather than the single opacity-only class it used to be. */
+
+/* ================================================ journey link arrow ===== */
+
+/* Decorative "Explore journey →" text inside a JourneyEntry. The entry's real
+   link is CardAction (a stretched, single focus-stop control — see
+   journey-entry.tsx), so the motion keys off the Card's own interactive
+   state, the same hook .wws-reveal already uses in components/ui/ui.css. */
+.wws-journey-link__arrow {
+  display: inline-block;
+  transition-property: transform;
+  transition-duration: var(--duration-standard);
+  transition-timing-function: var(--ease-standard);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .wws-card--interactive:hover .wws-journey-link__arrow {
+    transform: translateX(var(--space-2));
+  }
+}
+
+.wws-card--interactive:focus-within .wws-journey-link__arrow {
+  transform: translateX(var(--space-2));
+}

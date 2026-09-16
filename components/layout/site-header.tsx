@@ -131,70 +131,91 @@ export function SiteHeader({
       data-compact={compactOnScroll && scrolled}
       data-menu-open={menuOpen}
     >
-      <div
-        className="mx-auto flex w-full items-center justify-between gap-4"
-        style={{
-          maxWidth: 'var(--container-max)',
-          paddingInline: 'var(--container-gutter)',
-          minHeight: 'inherit',
-          paddingBlock: 'var(--space-3)',
-        }}
-      >
-        {/* Wordmark as text. The brand asset is pending replacement and must
-            not be depended on (public/brand/README.md). */}
-        <Link
-          href="/"
-          className="text-text-primary shrink-0"
+      <div className="wws-header-bar">
+        {/* Material layer only — tint, blur, border, shadow. Painted behind
+            .wws-header-content via z-index so nav text always stays crisp on
+            top of it. backdrop-filter is set inline (not in layout.css)
+            because Lightning CSS strips the unprefixed property for this
+            project's build target; inline styles bypass that pipeline
+            entirely. See the comment on .wws-header in layout.css. */}
+        <span
+          aria-hidden="true"
+          className="wws-header-surface"
+          style={
+            scrolled && !menuOpen
+              ? {
+                  backdropFilter: 'var(--wws-header-glass-filter)',
+                  WebkitBackdropFilter: 'var(--wws-header-glass-filter)',
+                }
+              : undefined
+          }
+        />
+
+        <div
+          className="wws-header-content mx-auto flex w-full items-center justify-between gap-4"
           style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: 'var(--text-base)',
-            fontWeight: 'var(--weight-display)',
-            letterSpacing: 'var(--tracking-heading)',
+            maxWidth: 'var(--container-max)',
+            paddingInline: 'var(--container-gutter)',
+            minHeight: 'inherit',
+            paddingBlock: 'var(--space-3)',
           }}
         >
-          Wander With Stars
-        </Link>
+          {/* Wordmark as text. The brand asset is pending replacement and must
+              not be depended on (public/brand/README.md). */}
+          <Link
+            href="/"
+            className="text-text-primary shrink-0"
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: 'var(--text-base)',
+              fontWeight: 'var(--weight-display)',
+              letterSpacing: 'var(--tracking-heading)',
+            }}
+          >
+            Wander With Stars
+          </Link>
 
-        {/* Desktop navigation. `md:` up — the mobile menu covers below that. */}
-        {hasNav ? (
-          <nav aria-label="Primary" className="hidden md:block">
-            <ul className="flex items-center" style={{ gap: 'var(--space-6)' }}>
-              {links.map((item) => (
-                <li key={item.label}>
-                  <NavLink item={item} pathname={pathname} />
-                </li>
-              ))}
-            </ul>
-          </nav>
-        ) : null}
-
-        <div className="flex items-center" style={{ gap: 'var(--space-3)' }}>
-          {primaryAction ? (
-            <LinkButton href={primaryAction.href} size="sm" className="hidden md:inline-flex">
-              {primaryAction.label}
-            </LinkButton>
+          {/* Desktop navigation. `md:` up — the mobile menu covers below that. */}
+          {hasNav ? (
+            <nav aria-label="Primary" className="hidden md:block">
+              <ul className="flex items-center" style={{ gap: 'var(--space-6)' }}>
+                {links.map((item) => (
+                  <li key={item.label}>
+                    <NavLink item={item} pathname={pathname} />
+                  </li>
+                ))}
+              </ul>
+            </nav>
           ) : null}
 
-          {hasMobileMenu ? (
-            <button
-              ref={triggerRef}
-              type="button"
-              className="wws-button wws-button--flat text-text-primary md:hidden"
-              /* Both halves of the disclosure contract: what it controls, and
-               whether it is currently open. */
-              aria-expanded={menuOpen}
-              aria-controls={menuId}
-              onClick={() => setMenuOpen((open) => !open)}
-              style={{
-                padding: 'var(--space-2)',
-                borderRadius: 'var(--radius-control)',
-                fontSize: 'var(--text-sm)',
-                fontWeight: 'var(--weight-label)',
-              }}
-            >
-              {menuOpen ? 'Close' : 'Menu'}
-            </button>
-          ) : null}
+          <div className="flex items-center" style={{ gap: 'var(--space-3)' }}>
+            {primaryAction ? (
+              <LinkButton href={primaryAction.href} size="sm" className="hidden md:inline-flex">
+                {primaryAction.label}
+              </LinkButton>
+            ) : null}
+
+            {hasMobileMenu ? (
+              <button
+                ref={triggerRef}
+                type="button"
+                className="wws-button wws-button--flat text-text-primary md:hidden"
+                /* Both halves of the disclosure contract: what it controls, and
+                 whether it is currently open. */
+                aria-expanded={menuOpen}
+                aria-controls={menuId}
+                onClick={() => setMenuOpen((open) => !open)}
+                style={{
+                  padding: 'var(--space-2)',
+                  borderRadius: 'var(--radius-control)',
+                  fontSize: 'var(--text-sm)',
+                  fontWeight: 'var(--weight-label)',
+                }}
+              >
+                {menuOpen ? 'Close' : 'Menu'}
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
 

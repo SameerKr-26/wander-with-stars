@@ -73,6 +73,60 @@ describe('TripCard — secondary information stays in the DOM', () => {
     expect(screen.getByText(/Hosted by Development Host/)).toBeInTheDocument();
     expect(screen.queryByText(/travellers joining/)).not.toBeInTheDocument();
   });
+
+  it('wraps secondary content in the shared collapsible .wws-reveal / .wws-reveal-content hooks', () => {
+    // Phase 3.4 "trip card consistency" fix: the same mechanism
+    // components/trips/journey-entry.tsx uses (components/ui/ui.css), not a
+    // second implementation. See journey-entry.test.tsx's suite for the
+    // shared behaviour's own contract tests — not duplicated here.
+    const { container } = render(<TripCard trip={TRIP} />);
+    const reveal = container.querySelector('.wws-reveal');
+    const content = reveal?.querySelector('.wws-reveal-content');
+    expect(reveal).not.toBeNull();
+    expect(content).not.toBeNull();
+    expect(content?.textContent).toContain('Hosted by Development Host');
+  });
+
+  it('no nested interactive controls exist inside the secondary content', () => {
+    const { container } = render(<TripCard trip={TRIP} />);
+    const reveal = container.querySelector('.wws-reveal') as HTMLElement;
+    expect(within(reveal).queryAllByRole('link')).toHaveLength(0);
+    expect(within(reveal).queryAllByRole('button')).toHaveLength(0);
+  });
+});
+
+describe('TripCard — resting height', () => {
+  it('does not force a fixed or minimum height anywhere in the card', () => {
+    const { container } = render(<TripCard trip={TRIP} />);
+    for (const el of container.querySelectorAll<HTMLElement>('*')) {
+      expect(el.style.height).toBe('');
+      expect(el.style.minHeight).toBe('');
+    }
+  });
+});
+
+describe('TripCard — reduced motion', () => {
+  it('renders correctly when prefers-reduced-motion is set', () => {
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      matches: query.includes('reduce'),
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    })) as typeof window.matchMedia;
+
+    try {
+      render(<TripCard trip={TRIP} />);
+      expect(screen.getByText('Sample Community Trip — Northern Vietnam')).toBeInTheDocument();
+      expect(screen.getByText(/Hosted by Development Host/)).toBeInTheDocument();
+    } finally {
+      window.matchMedia = original;
+    }
+  });
 });
 
 describe('TripCard — accessibility and routing', () => {

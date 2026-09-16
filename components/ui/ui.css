@@ -112,25 +112,63 @@
 
 /* Secondary information: visible by default so touch and narrow screens never
  * lose it, concealed only where a fine pointer and room both exist.
- * docs/UX_INTERACTION_GUIDE.md §3, docs/WWS_VISUAL_IDENTITY.md §16. */
+ * docs/UX_INTERACTION_GUIDE.md §3, docs/WWS_VISUAL_IDENTITY.md §16.
+ *
+ * Two-part, not one: `.wws-reveal` is a `grid-template-rows: 0fr -> 1fr`
+ * wrapper (the standard technique for animating to an intrinsic height
+ * without hardcoding one), and `.wws-reveal-content` — its one child,
+ * `overflow: hidden` so it clips as the row collapses — fades separately.
+ * This used to be opacity-only, which hid the content but still reserved
+ * its full height at rest: a resting card ended up with a tall blank area
+ * below its primary information (Phase 3.4's "trip card has excessive
+ * empty space" fix). Splitting the collapse from the fade fixes that for
+ * every consumer at once — this is the one shared trip-card interaction
+ * mechanism, used by components/marketing/trip-card.tsx and
+ * components/trips/journey-entry.tsx alike, not two implementations that
+ * could drift. `.wws-reveal-host` is kept as an alternate trigger hook for
+ * a future consumer whose hover/focus target isn't `.wws-card--interactive`
+ * itself. */
 .wws-reveal {
-  transition-property: opacity, transform;
+  display: grid;
+  grid-template-rows: 1fr;
+  transition-property: grid-template-rows;
+  transition-duration: var(--duration-standard);
+  transition-timing-function: var(--ease-standard);
+}
+
+.wws-reveal > * {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.wws-reveal-content {
+  opacity: 1;
+  transition-property: opacity;
   transition-duration: var(--duration-standard);
   transition-timing-function: var(--ease-standard);
 }
 
 @media (hover: hover) and (pointer: fine) and (min-width: 768px) {
   .wws-reveal {
+    grid-template-rows: 0fr;
+  }
+
+  .wws-reveal-content {
     opacity: 0;
-    transform: translateY(6px);
   }
 
   .wws-card--interactive:hover .wws-reveal,
   .wws-card--interactive:focus-within .wws-reveal,
   .wws-reveal-host:hover .wws-reveal,
   .wws-reveal-host:focus-within .wws-reveal {
+    grid-template-rows: 1fr;
+  }
+
+  .wws-card--interactive:hover .wws-reveal-content,
+  .wws-card--interactive:focus-within .wws-reveal-content,
+  .wws-reveal-host:hover .wws-reveal-content,
+  .wws-reveal-host:focus-within .wws-reveal-content {
     opacity: 1;
-    transform: none;
   }
 }
 

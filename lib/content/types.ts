@@ -60,9 +60,13 @@ export interface TravellerStory {
  * Trip style descriptors — docs/UX_INTERACTION_GUIDE.md §7.
  *
  * Presented as a "trip style" descriptor, never as a scientific personality
- * assessment, per that document's explicit instruction.
+ * assessment, per that document's explicit instruction. `nature` extends the
+ * original five-signal list (Phase 3.4's discovery UX) — no current fixture
+ * trip scores it, so selecting it in the UI honestly returns no results
+ * rather than one being invented to fill the option out.
  */
-export type TravelStyleSignal = 'adventure' | 'social' | 'party' | 'relaxation' | 'culture';
+export type TravelStyleSignal =
+  'adventure' | 'social' | 'party' | 'relaxation' | 'culture' | 'nature';
 
 export type TripStyleScores = Partial<Record<TravelStyleSignal, number>>;
 
@@ -100,6 +104,12 @@ export interface TripPreview {
   heroMedia: TripMedia;
   styleScores: TripStyleScores;
   travellerCount?: number;
+  /**
+   * One short editorial line — the featured-trip treatment needs a
+   * descriptive sentence beyond the raw fields. Optional: a real trip record
+   * may not have one yet, and the UI must not fabricate a substitute.
+   */
+  tagline?: string;
 }
 
 /**
@@ -130,6 +140,39 @@ export interface TripDetail extends TripPreview {
   exclusions: string[];
   gallery: TripMedia[];
   itineraryPreview: TripItineraryDay[];
+}
+
+/* ----------------------------------------------------------- discovery */
+
+/** Bucketed so the filter reads as a real choice, not a raw slider value. */
+export type DurationBucket = 'short' | 'medium' | 'long';
+
+/**
+ * Bucketed in the trip's own currency. A genuine limitation, not an
+ * oversight: every current fixture trip is priced in INR, so absolute
+ * rupee thresholds are honest for now. Multi-currency budget filtering
+ * needs real conversion or a currency-aware UI, deferred until more than
+ * one currency actually appears in the data.
+ */
+export type BudgetBucket = 'budget' | 'mid' | 'premium';
+
+/**
+ * Trip discovery filter state — /trips (Phase 3.4).
+ *
+ * Deliberately a flat, serialisable shape: every field can become a URL
+ * search param or a Supabase query predicate later without restructuring the
+ * UI that reads it. `lib/content/filters.ts` is the only place that
+ * interprets this shape; components only ever set and read it.
+ */
+export interface TripFilters {
+  /** Matched against title, destination and country — see filterTrips(). */
+  query: string;
+  /** Empty means "all styles" — never a hidden implicit filter. */
+  styles: TravelStyleSignal[];
+  /** One of the departure months actually present in the data, or null for "any". */
+  month: string | null;
+  duration: DurationBucket | null;
+  budget: BudgetBucket | null;
 }
 
 /* ------------------------------------------------------------ community */

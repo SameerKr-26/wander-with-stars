@@ -14,9 +14,16 @@ import type { TripPreview } from '@/lib/content/types';
  * Primary information (destination, title, date, duration, price,
  * availability) is always visible, on every viewport —
  * docs/UX_INTERACTION_GUIDE.md §3. Secondary information (host, traveller
- * count, trip style) reveals on hover/focus on pointer-capable, ≥768px
- * screens via the shared `.wws-reveal` mechanism, and is otherwise shown
- * plainly — never hidden on touch.
+ * count, trip style) is collapsed to zero height at rest and reveals on
+ * hover/focus on pointer-capable, ≥768px screens via the shared
+ * `.wws-reveal` / `.wws-reveal-content` mechanism (components/ui/ui.css —
+ * the same one components/trips/journey-entry.tsx uses, so both surfaces
+ * share one trip-card interaction rather than two that could drift), and is
+ * otherwise shown plainly — never hidden on touch. Collapsed by height, not
+ * merely opacity, so a resting card never carries a blank area reserved for
+ * content it isn't currently showing (Phase 3.4 "trip card consistency" fix
+ * — this used to be opacity-only, which hid the text but still reserved its
+ * full height).
  *
  * Links to `/trips/${trip.slug}` via `CardAction`, which stretches over the
  * whole card so it is one focus stop, keyboard-activatable, and announced
@@ -76,32 +83,34 @@ export function TripCard({ trip }: { trip: TripPreview }) {
         </Text>
 
         {/* Secondary — host, travellers, style. Always present in the DOM,
-            hidden only where a pointer + hover exist (.wws-reveal in
-            components/ui/ui.css); shown plainly otherwise. */}
-        <div
-          className="wws-reveal border-border-subtle flex flex-col border-t"
-          style={{
-            marginTop: 'var(--space-1)',
-            paddingTop: 'var(--space-3)',
-            gap: 'var(--space-2)',
-          }}
-        >
-          <Text variant="small" tone="secondary">
-            Hosted by {trip.host.name}
-            {trip.travellerCount !== undefined
-              ? ` · ${trip.travellerCount} travellers joining`
-              : ''}
-          </Text>
-          {topStyles.length > 0 ? (
-            <div className="flex flex-wrap" style={{ gap: 'var(--space-2)' }}>
-              {topStyles.map(({ signal }) => (
-                <Badge key={signal} tone="outline">
-                  {signal[0]?.toUpperCase()}
-                  {signal.slice(1)}
-                </Badge>
-              ))}
-            </div>
-          ) : null}
+            collapsed to zero height and revealed only where a pointer +
+            hover (or keyboard focus) exist — see the shared
+            .wws-reveal / .wws-reveal-content note above; shown plainly
+            otherwise. The divider (border-t) lives on the inner content
+            element so it fades in with the text, rather than sitting as a
+            stray line above a collapsed, empty area at rest. */}
+        <div className="wws-reveal" style={{ marginTop: 'var(--space-1)' }}>
+          <div
+            className="wws-reveal-content border-border-subtle flex flex-col border-t"
+            style={{ paddingTop: 'var(--space-3)', gap: 'var(--space-2)' }}
+          >
+            <Text variant="small" tone="secondary">
+              Hosted by {trip.host.name}
+              {trip.travellerCount !== undefined
+                ? ` · ${trip.travellerCount} travellers joining`
+                : ''}
+            </Text>
+            {topStyles.length > 0 ? (
+              <div className="flex flex-wrap" style={{ gap: 'var(--space-2)' }}>
+                {topStyles.map(({ signal }) => (
+                  <Badge key={signal} tone="outline">
+                    {signal[0]?.toUpperCase()}
+                    {signal.slice(1)}
+                  </Badge>
+                ))}
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
     </Card>
