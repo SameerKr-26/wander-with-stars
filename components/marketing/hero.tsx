@@ -1,6 +1,7 @@
 import { Container, GlassPanel, Heading, LinkButton, Stack, Text } from '@/components/ui';
 
 import { AtmosphereField } from './atmosphere-field';
+import { Highlight } from './highlight';
 import { StarMark } from './section-heading';
 
 /**
@@ -43,7 +44,7 @@ export function Hero() {
             >
               Your next
               <br />
-              adventure.
+              <Highlight>adventure.</Highlight>
             </Heading>
 
             <Text variant="lead" tone="secondary" className="max-w-[46ch]">

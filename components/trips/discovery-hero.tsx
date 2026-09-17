@@ -1,5 +1,7 @@
 import { Container, Heading, Section, Stack, Text } from '@/components/ui';
 
+import { Highlight } from '@/components/marketing/highlight';
+
 /**
  * TripDiscoveryHero — compact editorial hero for /trips.
  *
@@ -19,7 +21,7 @@ export function TripDiscoveryHero() {
           <Heading level="4xl" as="h1" style={{ textWrap: 'balance' }}>
             Find your next
             <br />
-            adventure.
+            <Highlight>adventure.</Highlight>
           </Heading>
           <Text variant="lead" tone="secondary">
             Discover trips built around experiences, people and moments.

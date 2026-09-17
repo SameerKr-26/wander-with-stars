@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 
 import { Container, LinkButton, Section, Stack, Text } from '@/components/ui';
+import { Highlight } from '@/components/marketing/highlight';
 import { PageHeader } from '@/components/marketing/page-header';
 import { StarMark } from '@/components/marketing/section-heading';
 
@@ -40,7 +41,11 @@ export default function AboutPage() {
     <>
       <PageHeader
         eyebrow="About"
-        title="Travel with people, not just packages"
+        title={
+          <>
+            Travel with <Highlight>people</Highlight>, not just packages
+          </>
+        }
         description="Wander With Stars is a social travel platform: curated group trips built around who you'll travel with, not just where you're going."
       />
 

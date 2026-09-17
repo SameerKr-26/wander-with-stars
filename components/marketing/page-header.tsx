@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import { Container, Heading, Section, Stack, Text } from '@/components/ui';
 
 /**
@@ -15,7 +17,8 @@ export function PageHeader({
   description,
 }: {
   eyebrow?: string;
-  title: string;
+  /** A plain string, or a heading with one accent word (e.g. via `Highlight`). */
+  title: ReactNode;
   description?: string;
 }) {
   return (

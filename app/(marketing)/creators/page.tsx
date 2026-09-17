@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 
 import { Container, Section } from '@/components/ui';
 import { CreatorExperiencesView } from '@/components/marketing/creator-experiences';
+import { Highlight } from '@/components/marketing/highlight';
 import { PageHeader } from '@/components/marketing/page-header';
 import { getCreatorExperiences } from '@/lib/content/queries';
 
@@ -30,7 +31,11 @@ export default function CreatorsPage() {
     <>
       <PageHeader
         eyebrow="Creators"
-        title="Travel led by people who know the way"
+        title={
+          <>
+            Travel led by people who know the <Highlight>way</Highlight>
+          </>
+        }
         description="Verified creators hosting WWS departures — published once the first ones are confirmed."
       />
       <Section spacing="tight">

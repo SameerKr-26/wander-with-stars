@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 
 import { Container, EmptyState, ErrorState, Heading, Section, Text } from '@/components/ui';
+import { Highlight } from '@/components/marketing/highlight';
 import { AllTripsCatalogue } from '@/components/trips/all-trips-catalogue';
 import { getUpcomingTrips } from '@/lib/content/queries';
 
@@ -45,7 +46,7 @@ export default async function AllTripsPage() {
               ← Discover trips
             </Link>
             <Heading level="4xl" as="h1">
-              All journeys
+              All <Highlight>journeys</Highlight>
             </Heading>
             <Text tone="secondary" style={{ fontSize: 'var(--text-lg)' }}>
               Every current WWS journey in one place.

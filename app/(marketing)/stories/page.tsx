@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 
 import { Container, Section } from '@/components/ui';
+import { Highlight } from '@/components/marketing/highlight';
 import { PageHeader } from '@/components/marketing/page-header';
 import { TravellerStoriesView } from '@/components/marketing/traveller-stories';
 import { getTravellerStories } from '@/lib/content/queries';
@@ -30,7 +31,11 @@ export default function StoriesPage() {
     <>
       <PageHeader
         eyebrow="Stories"
-        title="In their own words"
+        title={
+          <>
+            In their own <Highlight>words</Highlight>
+          </>
+        }
         description="Stories from travellers who've completed a WWS departure — published once they're verified."
       />
       <Section spacing="tight">
