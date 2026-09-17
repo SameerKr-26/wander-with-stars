@@ -277,6 +277,18 @@ NEW → CONTACTED → QUALIFIED → CONVERTED
 
 Alternate → LOST
 
+### Content record (Phase 3.6)
+draft → review → approved → published → archived
+
+Independent of "Trip departure" above: this tracks whether a piece of
+ingested trip CONTENT (an itinerary, a policy, an accommodation entry) has
+been reviewed against its source material, not whether seats can be
+booked. A departure can be `BOOKING_OPEN` while a correction to its content
+is still sitting in `review`. See docs/ARCHITECTURE.md §14 for the full
+ingestion pipeline this status belongs to (`lib/content/ingest/types.ts`'s
+`ContentStatus` — defined in code, not yet backed by a database column or
+an admin flow that moves a record between states).
+
 ## 13. Indexing strategy
 
 Consider indexes on:
