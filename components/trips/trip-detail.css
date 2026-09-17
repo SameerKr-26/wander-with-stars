@@ -1,0 +1,119 @@
+/* ---------------------------------------------------------------------------
+ * TRIP DETAIL — presentation styles (Phase 3.5)
+ *
+ * Imported once from app/(marketing)/trips/[slug]/page.tsx. Every value is a
+ * token — no literal colours, sizes, durations or easings — matching
+ * components/layout/layout.css, components/ui/ui.css and
+ * components/trips/trips.css.
+ *
+ * All motion here is neutralised by the prefers-reduced-motion rule in
+ * app/globals.css, which applies globally.
+ * ------------------------------------------------------------------------ */
+
+/* ==================================================== cinematic arrival == */
+
+/* The hero is always in the initial viewport, so its reveal runs once on
+ * mount rather than on scroll intersection — a plain CSS animation, not the
+ * IntersectionObserver-driven `.wws-reveal-media`/`.wws-reveal-text` (those
+ * are for content below the fold). Image and text arrive together rather
+ * than staggered with an animation-delay: the global reduced-motion rule
+ * neutralises `animation-duration`, not `animation-delay`, so a delay would
+ * leave reduced-motion users staring at an empty hero for that long — this
+ * keeps arrival fully safe under reduced motion with no separate branch. */
+.wws-arrival-media {
+  animation: wws-arrival-media var(--duration-hero) var(--ease-smooth) both;
+}
+
+@keyframes wws-arrival-media {
+  from {
+    opacity: 0;
+    transform: scale(1.05);
+  }
+}
+
+.wws-arrival-text {
+  animation: wws-arrival-text var(--duration-reveal) var(--ease-smooth) both;
+}
+
+@keyframes wws-arrival-text {
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-4));
+  }
+}
+
+/* ===================================================== route / journey == */
+
+/* The itinerary's route-line motif (docs/WWS_VISUAL_IDENTITY.md §13's
+ * flight-path vocabulary, extended here into a vertical day-by-day line —
+ * see components/marketing/atmosphere-field.tsx for the same dashed-path +
+ * marker language used elsewhere). Revealed once, when the itinerary
+ * scrolls into view (lib/hooks/use-reveal.ts) — not a continuous animation.
+ *
+ * A plain element scaled from the top, not an SVG path: itinerary rows are
+ * real, variable-height content (a day's summary might be one line or
+ * three), so the line's length must follow whatever height the day list
+ * actually renders at rather than a precomputed path geometry that would
+ * drift out of sync with it. */
+.wws-route-line {
+  transform-origin: top;
+  transform: scaleY(0);
+  transition: transform var(--duration-hero) var(--ease-smooth);
+}
+
+.wws-route--visible .wws-route-line {
+  transform: scaleY(1);
+}
+
+.wws-route-marker {
+  opacity: 0;
+  transition: opacity var(--duration-reveal) var(--ease-smooth);
+}
+
+.wws-route--visible .wws-route-marker {
+  opacity: 1;
+}
+
+/* ======================================================== disclosure ==== */
+
+/* Shared by TripFAQs and TripPolicies (components/trips/trip-faq.tsx,
+ * trip-policies.tsx) — native <details>/<summary>, not a hand-built
+ * accordion component: full keyboard support and correct expanded-state
+ * semantics come from the platform for free, the same reasoning
+ * components/ui/dialog.tsx gives for the native <dialog> element. No client
+ * JS anywhere in either component. The only animation is the marker
+ * rotating — deliberately not an animated open/close height transition,
+ * which native <details> cannot do smoothly across browsers without its
+ * own JS; a restrained, instant disclosure is preferable to a janky one. */
+.wws-disclosure-item {
+  border-top: 1px solid var(--color-border-subtle);
+  padding-block: var(--space-4);
+}
+
+.wws-disclosure-item:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.wws-disclosure-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  cursor: pointer;
+  list-style: none;
+}
+
+.wws-disclosure-summary::-webkit-details-marker {
+  display: none;
+}
+
+.wws-disclosure-icon {
+  flex-shrink: 0;
+  color: var(--color-text-brand);
+  transition: transform var(--duration-standard) var(--ease-standard);
+}
+
+.wws-disclosure-item[open] .wws-disclosure-icon {
+  transform: rotate(45deg);
+}

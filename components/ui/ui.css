@@ -108,6 +108,43 @@
   }
 }
 
+/* ======================================================= scroll reveal == */
+
+/* First WWS travel motion layer (Phase 3.4 §8, extended in Phase 3.5's trip
+ * detail page): a restrained reveal as editorial content enters the
+ * viewport, not a general animation system. lib/hooks/use-reveal.ts toggles
+ * the `--visible` modifier from an IntersectionObserver callback; reduced
+ * motion is handled both there (skips straight to visible) and here (the
+ * global transition-duration override in app/globals.css collapses this to
+ * effectively instant either way). Shared by
+ * components/trips/journey-entry.tsx and the trip detail page — one
+ * implementation, not one per surface. */
+.wws-reveal-media {
+  opacity: 0;
+  transform: scale(1.05);
+  transition-property: opacity, transform;
+  transition-duration: var(--duration-reveal);
+  transition-timing-function: var(--ease-smooth);
+}
+
+.wws-reveal-media--visible {
+  opacity: 1;
+  transform: none;
+}
+
+.wws-reveal-text {
+  opacity: 0;
+  transform: translateY(var(--space-4));
+  transition-property: opacity, transform;
+  transition-duration: var(--duration-reveal);
+  transition-timing-function: var(--ease-smooth);
+}
+
+.wws-reveal-text--visible {
+  opacity: 1;
+  transform: none;
+}
+
 /* =================================================== progressive reveal == */
 
 /* Secondary information: visible by default so touch and narrow screens never

@@ -103,6 +103,49 @@ Image/video metadata and storage paths.
 ### trip_exclusions
 ### trip_faqs
 
+### trip_accommodation
+One row per accommodation leg of a departure (a departure may use more than
+one property). Fields: `trip_departure_id`, `name`, `type`, `description`,
+`nights`, `media_id`. See `lib/content/types.ts`'s `TripAccommodation` and
+`lib/content/ingest/schema.ts`'s `tripAccommodationSchema` for the
+validated shape this is expected to satisfy (Phase 3.6).
+
+### trip_transport
+One row per transport leg (a departure may combine several — a flight, a
+transfer, a train). Fields: `trip_departure_id`, `mode`, `description`.
+
+### trip_meeting_points
+One row per departure (not one-to-many — a departure has exactly one
+meeting point today). Fields: `trip_departure_id`, `location`, `time`,
+`instructions`.
+
+### trip_important_notes
+Also "Traveller Notes" (Phase 3.5C/3.6) — practical warnings and
+traveller-facing context notes are the same table, distinguished by
+`category`. Fields: `trip_id` or `trip_departure_id`, `title`, `detail`,
+`category` (nullable — `etiquette | weather | connectivity | money |
+cultural | health | arrival | other`, matching
+`TripTravellerNoteCategory`).
+
+### trip_policies
+Cancellation/refund/payment-terms/additional-terms content. Fields:
+`trip_id`, `kind` (`cancellation | refund | payment_terms | additional`),
+`title`, `body`. See "Content lifecycle" below and §14's note on
+commercial/legal approval — this table's rows need a stricter publication
+gate than most other trip content.
+
+### trip_extras
+Optional add-on costs. Fields: `trip_id`, `name`, `price_amount`,
+`price_currency`, `description`.
+
+### trip_guides
+A departure's guide, distinct from `trip_hosts` (host organises/owns the
+departure; guide leads day-to-day activities on the ground — the same
+person may hold both roles, or not). Same shape as `trip_hosts` today
+(`lib/content/types.ts`'s `GuidePreview = HostPreview` type alias) — kept
+as a separate table/association regardless, since the roles are
+conceptually distinct even when their current fields happen to match.
+
 ## 4. Commerce
 
 ### bookings
@@ -314,3 +357,12 @@ Public read should be narrow and intentional. A public trip view should not reve
 Traveller policies should generally be based on auth.uid() ownership or explicit community membership.
 
 Admin access must be checked server-side and through database policy design rather than UI visibility.
+
+Commercial/legal trip content — `trip_policies` (cancellation, refund,
+payment terms, additional terms) above — needs a stricter publication gate
+than marketing copy: a future RLS policy (and the application-level review
+flow in front of it, docs/ARCHITECTURE.md §14) should require an elevated
+role/approval before a change to `trip_policies` reaches whatever `public`
+read policies expose, distinct from the role allowed to edit gallery
+captions or itinerary summaries. Not implemented yet — see docs/RBAC.md for
+where that role distinction belongs once it exists.
