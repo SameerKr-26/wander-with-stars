@@ -191,6 +191,9 @@ function mapPolicy(rows: TripPolicySectionRow[]): TripPolicy | undefined {
  * `departure` is required here (not optional) precisely because
  * `TripPreview` requires `departureDate`/`price`/`availability` — the
  * caller only invokes this once a presentable departure genuinely exists.
+ * `host` is omitted (not a placeholder) when `trip.hosts` is null — real,
+ * live-captured trips (Phase 4.4B) can genuinely have no named host on
+ * record.
  */
 export function mapTripPreview(trip: TripRow, departure: TripDepartureRow): TripPreview {
   const availability = AVAILABILITY_BY_DEPARTURE_STATUS[departure.status];
@@ -201,9 +204,6 @@ export function mapTripPreview(trip: TripRow, departure: TripDepartureRow): Trip
   }
   if (!departure.price_amount || !departure.price_currency) {
     throw new Error(`Presentable departure ${departure.id} has no price set`);
-  }
-  if (!trip.hosts) {
-    throw new Error(`Trip ${trip.slug} has a presentable departure but no host`);
   }
 
   const capacity = departure.capacity;
@@ -223,7 +223,7 @@ export function mapTripPreview(trip: TripRow, departure: TripDepartureRow): Trip
       status: availability,
       ...(seatsLeft !== undefined ? { spotsLeft: seatsLeft } : {}),
     },
-    host: mapPersonPreview(trip.hosts),
+    ...(trip.hosts ? { host: mapPersonPreview(trip.hosts) } : {}),
     heroMedia: selectHeroMedia(trip.trip_media),
     styleScores: trip.style_scores,
     ...(trip.tagline ? { tagline: trip.tagline } : {}),
@@ -244,7 +244,7 @@ export function mapTripDetail(trip: TripDetailRow, departure: TripDepartureRow):
   const gallery = byDisplayOrder(trip.trip_media).map(mapMedia);
   const accommodation = departure.trip_accommodation.map(mapAccommodation);
   const transport = byDisplayOrder(departure.trip_transport).map(mapTransport);
-  const meetingPoint = departure.trip_meeting_points[0];
+  const meetingPoint = departure.trip_meeting_points ?? undefined;
   const importantNotes = byDisplayOrder(trip.trip_important_notes).map(mapImportantNote);
   const extras = byDisplayOrder(trip.trip_extras).map((row): TripExtra => ({
     name: row.name,

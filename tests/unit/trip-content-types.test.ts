@@ -199,7 +199,7 @@ describe('Phase 3.5C — GuidePreview and TripImportantNote.category', () => {
 
     const withGuide: TripDetail = { ...withoutGuide, guide: { name: 'Example Guide' } };
     expect(withGuide.guide?.name).toBe('Example Guide');
-    expect(withGuide.host.name).toBe('Shape-test Host');
+    expect(withGuide.host?.name).toBe('Shape-test Host');
   });
 
   it('TripImportantNote.category is optional and does not force every note into a bucket', () => {

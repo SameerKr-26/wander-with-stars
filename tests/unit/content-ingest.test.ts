@@ -102,7 +102,7 @@ describe('ingestTripContent — valid content', () => {
     if (!result.ok) return;
 
     expect(result.data.tagline).toBeUndefined();
-    expect(result.data.host.tagline).toBeUndefined();
+    expect(result.data.host?.tagline).toBeUndefined();
     expect(result.data.accommodation).toBeUndefined();
     expect(result.data.policy).toBeUndefined();
     expect(result.data.guide).toBeUndefined();
@@ -393,10 +393,14 @@ describe('Phase 3.7 — real Vietnam WWS 7D6N content', () => {
     if (!VIETNAM_WWS_7D6N_INGEST.ok) return;
 
     expect(VIETNAM_WWS_7D6N_INGEST.data.inclusions).toHaveLength(18);
-    expect(VIETNAM_WWS_7D6N_INGEST.data.exclusions).toHaveLength(14);
+    // 15, not the PDF's original 14: Phase 4.4B added one exclusion
+    // ("5% GST and 2% TCS") found on the live WWS site but absent from
+    // the PDF — see this source file's own comment for why.
+    expect(VIETNAM_WWS_7D6N_INGEST.data.exclusions).toHaveLength(15);
     expect(VIETNAM_WWS_7D6N_INGEST.data.exclusions).toContain(
       'Visa Fees (E-Visa for Indians: ₹2900)',
     );
+    expect(VIETNAM_WWS_7D6N_INGEST.data.exclusions).toContain('5% GST and 2% TCS');
     expect(VIETNAM_WWS_7D6N_INGEST.data.inclusions).toContain('Hanoi Train Street Tour');
   });
 

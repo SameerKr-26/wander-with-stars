@@ -115,6 +115,13 @@ represents more than one host per trip (`TripPreview.host` is singular).
 Fields: id, name, tagline, avatar_kind/avatar_src/avatar_alt/avatar_poster
 (mirrors `TripMedia`'s discriminated shape), created_at, updated_at.
 
+`trips.host_id` is nullable, and `TripPreview.host`/`TripDetail.host`
+(`lib/content/types.ts`) are optional as of Phase 4.4B: real, live-captured
+trips can have a genuine, on-the-record absence of a named host (the source
+site only ever names a generic "Trip Captain" role, never a specific
+person) — `lib/content/db/map.ts` omits the field rather than fabricating a
+host or throwing, exactly like the already-optional `guide`.
+
 ### guides
 A departure's guide, distinct from `hosts` (a host organises/owns a trip; a
 guide leads a specific departure on the ground — the same real person may

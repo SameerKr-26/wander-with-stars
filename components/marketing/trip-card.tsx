@@ -94,12 +94,14 @@ export function TripCard({ trip }: { trip: TripPreview }) {
             className="wws-reveal-content border-border-subtle flex flex-col border-t"
             style={{ paddingTop: 'var(--space-3)', gap: 'var(--space-2)' }}
           >
-            <Text variant="small" tone="secondary">
-              Hosted by {trip.host.name}
-              {trip.travellerCount !== undefined
-                ? ` · ${trip.travellerCount} travellers joining`
-                : ''}
-            </Text>
+            {trip.host || trip.travellerCount !== undefined ? (
+              <Text variant="small" tone="secondary">
+                {trip.host ? `Hosted by ${trip.host.name}` : ''}
+                {trip.travellerCount !== undefined
+                  ? `${trip.host ? ' · ' : ''}${trip.travellerCount} travellers joining`
+                  : ''}
+              </Text>
+            ) : null}
             {topStyles.length > 0 ? (
               <div className="flex flex-wrap" style={{ gap: 'var(--space-2)' }}>
                 {topStyles.map(({ signal }) => (

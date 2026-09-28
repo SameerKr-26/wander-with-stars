@@ -37,7 +37,7 @@ function makeDeparture() {
     guides: null,
     trip_accommodation: [],
     trip_transport: [],
-    trip_meeting_points: [],
+    trip_meeting_points: null,
   };
 }
 

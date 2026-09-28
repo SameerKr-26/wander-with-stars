@@ -127,7 +127,10 @@ export interface TripDepartureRow {
   guides: GuideRow | null;
   trip_accommodation: TripAccommodationRow[];
   trip_transport: TripTransportRow[];
-  trip_meeting_points: TripMeetingPointRow[];
+  // To-one, not to-many: a unique constraint on trip_departure_id
+  // (supabase/migrations/20260928164518_create_departure_logistics_tables.sql)
+  // makes PostgREST return a single row or null here, never an array.
+  trip_meeting_points: TripMeetingPointRow | null;
 }
 
 export interface TripRow {

@@ -446,6 +446,44 @@ database (Docker), which proved the migrations and query layer work, but no
 `.env.local`) has a migrated database to point at yet. Flipping the switch is
 still a one-variable change, once one does.
 
+### Database-backed public catalogue mode (Phase 4.4B)
+
+`CONTENT_SOURCE=database` is now a verified, working, opt-in local mode —
+not just a designed-but-unused switch. To run it against the local Supabase
+stack (`npx supabase start`):
+
+```sh
+CONTENT_SOURCE=database \
+NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 \
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<local anon key, from `npx supabase status`> \
+SUPABASE_SERVICE_ROLE_KEY=<local service-role key, only needed by seed scripts> \
+npm run dev
+```
+
+`CONTENT_SOURCE` still defaults to `'fixtures'` — this section documents an
+explicit, reproducible way to opt into the other mode locally, it does not
+change what a plain `npm run dev` does. There is deliberately no fallback
+from `'database'` to `'fixtures'` on a query error: `lib/content/queries.ts`
+lets a failed database read surface as a real error, so a broken database
+connection is never silently masked by fixture content standing in for it.
+
+Real content reaches this mode through the same content lifecycle Phase 4.3
+built, never a direct status write: `scripts/seed-live-catalogue.ts` inserts
+trip/departure rows as `draft`, and `scripts/publish-live-catalogue.ts`
+walks each one through `draft → review → approved → published` using
+`lib/admin/transitions.ts`'s `canTransition` (see that script's own header
+for why it re-implements the transition sequence rather than importing
+`lib/admin/repository.ts` directly — that module's `server-only` import
+throws outside Next's build). Public visibility then follows entirely from
+the existing RLS policies — no public-only special-case policy exists, and
+no service-role client is used to render the public site.
+
+See `docs/source-material/wws-live/README.md` for what content is actually
+seeded this way (Thailand, Vietnam, Bali — the real, live-captured WWS
+catalogue), how source versioning/change-detection works, and
+`scripts/audit-live-parity.ts` for the automated parity audit between the
+live source and this rebuilt site's rendered pages.
+
 ### Commercially-incomplete source content (Phase 3.7)
 
 Real source material can describe a trip completely — route, itinerary,

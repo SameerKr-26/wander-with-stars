@@ -93,6 +93,15 @@ export const VIETNAM_WWS_7D6N_RAW: RawTripInput = {
   // The visa-fee figure is a legal/pricing-sensitive claim from the
   // source, not independently verified or updated — flagged again in this
   // record's `reviewNotes` below and in the Phase 3.7 report.
+  //
+  // Phase 4.4B: one line added — '5% GST and 2% TCS' — that the original
+  // PDF never had but the live WWS site (independently captured in Phase
+  // 4.4A) does. Not a transcription fix: this is new information the PDF
+  // genuinely lacked (a tax-disclosure line likely added to the live site
+  // after the PDF was produced), added now specifically so this record
+  // achieves true content parity with the live source before publication —
+  // see docs/source-material/wws-live/README.md's "Vietnam provenance"
+  // section for the full reasoning.
   exclusions: [
     'International Flights',
     'Visa Fees (E-Visa for Indians: ₹2900)',
@@ -108,6 +117,7 @@ export const VIETNAM_WWS_7D6N_RAW: RawTripInput = {
     'Any cost arising due to natural calamities like landslides, roadblocks etc. (to be borne directly by the customer on the spot)',
     'Cost arises due to change or delay in flight timings.',
     'Travel Insurance.',
+    '5% GST and 2% TCS',
   ],
 
   // No real WWS photography for this trip exists yet, and the PDF's own
@@ -330,7 +340,11 @@ export const VIETNAM_WWS_7D6N_RECORD: ContentRecord<DraftTripDetail> | undefined
           'source claim, not independently verified. Day 4’s itinerary text preserves a ' +
           'stray "Y" from the source PDF. Day 5’s title references a "Club Night" the body ' +
           'text does not describe — both are source inconsistencies, not transcription ' +
-          'errors introduced here. Not publishable until a human supplies the missing ' +
-          'commercial fields and the record separately passes tripDetailSchema.',
+          "errors introduced here. Phase 4.4A independently captured the live WWS site's " +
+          'version of this trip and confirmed it matches this PDF-sourced content almost ' +
+          'verbatim; Phase 4.4B added the one genuine gap found (a "5% GST and 2% TCS" ' +
+          'exclusion the PDF never had) to reach full parity, then supplied the ' +
+          'commercial fields (departure Nov 13 2026, ₹64,999) via a separate ' +
+          'trip_departures row — see docs/source-material/wws-live/.',
       }
     : undefined;

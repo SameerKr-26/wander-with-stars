@@ -90,6 +90,98 @@ itinerary, inclusions, exclusions, notes) through the existing
 Vietnam source. `scripts/seed-live-catalogue.ts` inserts that content plus
 the real departure rows (dates, prices, capacity) into the local
 Phase 4.1 database — see that script's own header for why departures are
-seeded directly rather than through the content-ingestion schema, and the
-Phase 4.4A report for why every seeded record stays `draft`, not
-`published`.
+seeded directly rather than through the content-ingestion schema.
+
+## Vietnam provenance (Phase 4.4A → 4.4B)
+
+There are two Vietnam records in this project, and they are **not merged**:
+
+- **`lib/content/ingest/sources/vietnam-wws-7d6n.ts`** (Phase 3.7) — content
+  transcribed from a WWS-supplied PDF. Title `"Vietnam 6N/7D"`, slug
+  `vietnam-6n7d`. This is the record actually stored in the database and
+  rendered at `/trips/vietnam-6n7d`.
+- **`raw/vietnam-adventure.txt`** (Phase 4.4A) — an independent, read-only
+  capture of the live site's own Vietnam page, titled on-screen
+  `"Vietnam Adventure: Culture and Scenic Beauty"`.
+
+Comparing the two (see `raw/vietnam-adventure.txt`'s own note) found the
+itinerary, inclusions and exclusions match almost verbatim — this is the
+same underlying WWS product, republished on the live site, not a different
+trip. Two real differences were found and handled deliberately rather than
+silently reconciled:
+
+1. **The on-screen title differs** (`"Vietnam Adventure: Culture and Scenic
+   Beauty"` vs. the PDF's `"Vietnam 6N/7D"`). The existing PDF-sourced
+   record's title and slug were **not renamed** — changing a slug would
+   break the existing route/tests for no content benefit, and the phase that
+   captured this (4.4A) treated the live site's capture as confirmation and
+   a source of missing commercial facts, not a wholesale replacement of an
+   already-ingested record. `scripts/audit-live-parity.ts` (Phase 4.4B)
+   reports this as a `KNOWN-DIFFERENCE`, not a `MISMATCH` — it is expected,
+   not a bug.
+2. **One exclusion line was missing from the PDF**: `"5% GST and 2% TCS"`
+   appears on the live site but was never in the PDF capture. Phase 4.4B
+   added this one line to `vietnam-wws-7d6n.ts`'s `exclusions` array (see
+   that file's own comment) — a genuine content gap being closed, not a
+   transcription "fix" of existing text.
+
+The live capture's real commercial facts (departure Nov 13 2026, ₹64,999,
+max group size 24) were never available from the PDF and are supplied
+**only** via a separate `trip_departures` row
+(`scripts/seed-live-catalogue.ts`) attached to the existing `vietnam-6n7d`
+trip — the trip content record itself was not given a fabricated
+`departureDate`/`price`/`availability`.
+
+## Phase 4.4B — activation, publishing and parity audit
+
+Phase 4.4A ended with all three trips seeded but `draft`/`draft` (content
+and departure status) — correct for an automated capture that had not been
+through human review. Phase 4.4B is the deliberate decision to publish that
+capture:
+
+- **`scripts/publish-live-catalogue.ts`** moves each of the three trips
+  through the existing admin content lifecycle
+  (`draft → review → approved → published`, `lib/admin/transitions.ts`'s
+  `canTransition`, run as role `admin` one step at a time — never a direct
+  `UPDATE ... SET content_status = 'published'`) and sets each trip's
+  departure(s) to `booking_open`. Public visibility then follows from the
+  existing RLS policies on `trips`/`trip_departures` — no special-case
+  public policy was added, and no service-role data is used to render the
+  public site.
+- **`CONTENT_SOURCE=database`** (an existing env switch,
+  `lib/content/db/source.ts`) makes `/trips`, `/trips/all` and
+  `/trips/[slug]` read this seeded-and-published content instead of
+  `lib/content/fixtures.ts`. The default remains `'fixtures'` — this is an
+  explicit, opt-in mode for local verification against the local Supabase
+  stack, not a silent behavior change, and there is no fallback from
+  database to fixtures on a query failure (errors surface, they are not
+  swallowed).
+- **`scripts/audit-live-parity.ts`** is the automated MATCH / MISMATCH /
+  MISSING / EXTRA-FABRICATED / KNOWN-DIFFERENCE comparison between this
+  canonical capture and the rebuilt site's actual rendered pages (title,
+  country, duration, price, itinerary day count, inclusion/exclusion
+  section presence, absence of fabricated ratings/reviews/FAQs, horizontal
+  overflow on desktop and mobile viewports). Run it with:
+
+  ```sh
+  npx tsx scripts/audit-live-parity.ts --base-url http://localhost:3000
+  ```
+
+  against a dev server running in database mode. It writes
+  `parity-audit-report.md` in this directory and exits non-zero if any
+  `MISMATCH` or `EXTRA-FABRICATED` finding exists.
+
+### Known limitation: one departure per trip route
+
+The live site gives each departure its own URL
+(`/trips/{departureId}`), so all three of Thailand's departures are
+independently browsable there. This project's route is one per **trip
+slug**, not per departure, and `lib/content/db/map.ts`'s
+`selectPresentableDeparture` always picks the soonest bookable one for that
+route. Thailand's other two departures (Nov 22 ₹59,999, Dec 22 ₹64,999)
+exist as correctly separate, correctly priced `trip_departures` rows —
+never collapsed into one, never overwritten — but are not independently
+reachable via their own public route today. Redesigning trip routing to
+support multiple browsable departures per trip is out of scope for this
+phase (which activates the existing catalogue, not redesign trip pages) and
+is left for a future phase.

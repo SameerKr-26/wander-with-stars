@@ -119,7 +119,14 @@ export interface TripPreview {
   durationNights: number;
   price: TripPrice;
   availability: TripAvailability;
-  host: HostPreview;
+  /**
+   * Optional as of Phase 4.4B: real, actively-sold WWS trips (captured
+   * directly from the live site) can genuinely have no named host on
+   * record — only a generic role label ("Trip Captain") the domain model
+   * has never claimed to represent as a `HostPreview`. Absent, not a
+   * fabricated placeholder, exactly like `guide` below already was.
+   */
+  host?: HostPreview;
   heroMedia: TripMedia;
   styleScores: TripStyleScores;
   travellerCount?: number;

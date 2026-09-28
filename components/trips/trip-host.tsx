@@ -20,7 +20,9 @@ import type { GuidePreview, HostPreview } from '@/lib/content/types';
  * CLAUDE.md forbids. Once real aggregate data exists, it has a home in this
  * same section without a rewrite.
  */
-export function TripHost({ host }: { host: HostPreview }) {
+export function TripHost({ host }: { host: HostPreview | undefined }) {
+  if (!host) return null;
+
   return (
     <Stack gap={2}>
       <Text variant="label" tone="brand" uppercase>
@@ -76,7 +78,7 @@ export function TripPeople({
   guide,
   travellerCount,
 }: {
-  host: HostPreview;
+  host: HostPreview | undefined;
   guide?: GuidePreview | undefined;
   travellerCount?: number | undefined;
 }) {

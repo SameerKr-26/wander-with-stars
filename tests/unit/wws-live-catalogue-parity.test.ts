@@ -176,16 +176,13 @@ describe('Vietnam Adventure — cross-verification against the live source', () 
     expect((raw.inclusions as string[]).length).toBe(catalogueTrip.inclusionCount);
   });
 
-  it('exclusion count is one less than the live source — a real, documented drift, not a bug', () => {
-    // The PDF-sourced list (Phase 3.7) has no "5% GST and 2% TCS" line;
-    // the live site does. A genuine difference between the two sources
-    // (the live site likely added mandatory tax disclosure after the PDF
-    // was produced), not a transcription error — recorded here rather
-    // than silently asserting false equality. Not touched (see this file's
-    // own header): Vietnam's committed content stays exactly as Phase 3.7
-    // ingested it.
-    expect((raw.exclusions as string[]).length).toBe(catalogueTrip.exclusionCount - 1);
-    expect(raw.exclusions).not.toContain('5% GST and 2% TCS');
+  it('exclusion count now matches the live source exactly — Phase 4.4B parity fix', () => {
+    // Phase 4.4A found the PDF-sourced list (Phase 3.7) was missing the
+    // live site's "5% GST and 2% TCS" exclusion line; Phase 4.4B added it
+    // (a real content gap, not a transcription error) specifically to
+    // reach full parity before publishing this trip.
+    expect((raw.exclusions as string[]).length).toBe(catalogueTrip.exclusionCount);
+    expect(raw.exclusions).toContain('5% GST and 2% TCS');
   });
 
   it('has exactly one departure captured, now with real commercial facts', () => {

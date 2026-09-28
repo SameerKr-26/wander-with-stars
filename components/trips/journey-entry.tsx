@@ -217,12 +217,14 @@ export function JourneyEntry({
                 </div>
               ) : null}
 
-              <Text variant="small" tone="secondary">
-                Hosted by {trip.host.name}
-                {trip.travellerCount !== undefined
-                  ? ` · ${trip.travellerCount} travellers joining`
-                  : ''}
-              </Text>
+              {trip.host || trip.travellerCount !== undefined ? (
+                <Text variant="small" tone="secondary">
+                  {trip.host ? `Hosted by ${trip.host.name}` : ''}
+                  {trip.travellerCount !== undefined
+                    ? `${trip.host ? ' · ' : ''}${trip.travellerCount} travellers joining`
+                    : ''}
+                </Text>
+              ) : null}
 
               <span
                 aria-hidden="true"

@@ -44,7 +44,7 @@ function makeDeparture(overrides: Partial<TripDepartureRow> = {}): TripDeparture
     guides: null,
     trip_accommodation: [],
     trip_transport: [],
-    trip_meeting_points: [],
+    trip_meeting_points: null,
     ...overrides,
   };
 }
@@ -116,7 +116,7 @@ describe('mapTripPreview', () => {
     expect(preview.departureDate).toBe('2099-06-01');
     expect(preview.price).toEqual({ amount: 50000, currency: 'INR' });
     expect(preview.availability.status).toBe('almost-full');
-    expect(preview.host.name).toBe('Test Host');
+    expect(preview.host?.name).toBe('Test Host');
   });
 
   it('computes spotsLeft from capacity minus seats_reserved', () => {
@@ -181,8 +181,9 @@ describe('mapTripPreview', () => {
     ).toThrow();
   });
 
-  it('throws rather than mapping a trip with no host', () => {
-    expect(() => mapTripPreview(makeTripDetailRow({ hosts: null }), makeDeparture())).toThrow();
+  it('Phase 4.4B: omits host (does not throw or fabricate one) when a trip has no host on record', () => {
+    const preview = mapTripPreview(makeTripDetailRow({ hosts: null }), makeDeparture());
+    expect(preview.host).toBeUndefined();
   });
 });
 
@@ -228,9 +229,11 @@ describe('mapTripDetail', () => {
     const departure = makeDeparture({
       trip_accommodation: [{ name: 'Test Hotel', type: 'Boutique', description: null, nights: 2 }],
       trip_transport: [{ mode: 'Flight', description: 'A to B', display_order: 0 }],
-      trip_meeting_points: [
-        { location: 'Lobby', meeting_time: '9:00 AM', instructions: 'Bring your passport' },
-      ],
+      trip_meeting_points: {
+        location: 'Lobby',
+        meeting_time: '9:00 AM',
+        instructions: 'Bring your passport',
+      },
       guides: GUIDE,
     });
     const detail = mapTripDetail(makeTripDetailRow(), departure);
