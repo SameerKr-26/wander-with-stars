@@ -16,8 +16,9 @@ import type { TripDetailRow, TripRow } from './schema';
  * file (docs/SECURITY.md §5).
  *
  * `.returns<T>()` pins each query's result to a hand-authored row shape
- * (`./schema.ts`) rather than trusting the placeholder `Database` generic —
- * see that file's header for why.
+ * (`./schema.ts`) with literal-typed status/kind/category columns the real,
+ * generated `Database` type (Phase 4.2A) cannot express — see that file's
+ * header for why.
  */
 
 const HOST_FIELDS = 'id, name, tagline, avatar_kind, avatar_src, avatar_alt, avatar_poster';

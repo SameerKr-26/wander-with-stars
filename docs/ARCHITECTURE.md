@@ -420,10 +420,13 @@ signature never changes, and no UI component notices which one answered it.
   `lib/supabase/admin.ts`), relying entirely on the Phase 4.1 RLS policies
   for visibility — it applies no `content_status`/departure `status` filter
   of its own.
-- `schema.ts` — hand-authored row types mirroring `supabase/migrations/*.sql`
-  column-for-column, used only until `npm run db:types` can run against a
-  reachable database and replace them with the genuinely generated
-  `lib/supabase/database.types.ts` (still the Phase 1 placeholder).
+- `schema.ts` — hand-maintained row types, now layered on top of the real,
+  generated `lib/supabase/database.types.ts` (Phase 4.2A —
+  `npm run db:types:local`) rather than standing in for it: it exists
+  specifically for the literal-union status/kind/category columns a
+  CHECK-constrained text column generates as plain `string` for, which
+  `lib/content/db/map.ts` needs precise types for. See that file's own
+  header for the full reasoning.
 - `map.ts` — pure functions (`mapTripPreview`, `mapTripDetail`,
   `selectPresentableDeparture`) composing one `trips` row and the one
   `trip_departures` row it presents with into the existing `TripPreview`/
@@ -436,10 +439,12 @@ keeps `server-only` out of the module graph entirely when
 why), so every existing fixture-mode test and render path is unaffected.
 
 Not built in this phase: a CMS, an admin upload/publishing panel, or
-booking/payments. `CONTENT_SOURCE` defaults to `'fixtures'`, not
-`'database'`, because the Phase 4.1 schema has not been applied to any
-reachable database yet (see `supabase/migrations/README.md`) — flipping the
-switch is a one-variable change once it has been.
+booking/payments. `CONTENT_SOURCE` still defaults to `'fixtures'`, not
+`'database'` — Phase 4.2A verified the schema against a real *local* Postgres
+database (Docker), which proved the migrations and query layer work, but no
+*deployed* environment (Vercel, or the actual remote Supabase project in
+`.env.local`) has a migrated database to point at yet. Flipping the switch is
+still a one-variable change, once one does.
 
 ### Commercially-incomplete source content (Phase 3.7)
 

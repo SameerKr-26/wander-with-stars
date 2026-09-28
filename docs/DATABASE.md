@@ -39,11 +39,13 @@ Supports role membership and future multi-team operations.
 
 ## 3. Travel catalogue
 
-**Implemented (Phase 4.1)** — `supabase/migrations/2026092816450{2,6,10,14,18}_*.sql`.
-Every table below matches what those five migrations actually created;
-where this section originally sketched a different name or shape, the
-change and why it happened is called out inline. Not yet applied to or
-verified against a real database — see `supabase/migrations/README.md`.
+**Implemented (Phase 4.1) and verified against a real database (Phase 4.2A)**
+— `supabase/migrations/2026092816450{2,6,10,14,18}_*.sql`. Every table below
+matches what those five migrations actually created; where this section
+originally sketched a different name or shape, the change and why it
+happened is called out inline. Verified locally (Docker/`supabase start`) —
+not yet linked or pushed to any remote/shared project. See
+`supabase/migrations/README.md`.
 
 ### trips
 The reusable trip CONTENT/PRODUCT — deliberately holds no departure-specific
@@ -376,7 +378,8 @@ Add indexes based on observed query patterns rather than blindly indexing everyt
 
 ## 14. RLS design notes
 
-**Implemented (Phase 4.1)** for the travel-catalogue tables in §3: `anon` and
+**Implemented (Phase 4.1) and verified against a real database (Phase 4.2A)**
+for the travel-catalogue tables in §3: `anon` and
 `authenticated` may `select` a trip only once `trips.content_status =
 'published'` (via the `trip_is_published()` helper function), a departure
 only once its own `status <> 'draft'` AND its trip is published (via
@@ -387,8 +390,10 @@ departure clears that same gate. `hosts`/`guides` are `using (true)`
 read-only — justified as non-sensitive public profile data, not an
 exception to the rule below. No `anon`/`authenticated` `insert`/`update`/
 `delete` policy exists on any of these tables; every write goes through
-`lib/supabase/admin.ts`'s service-role client. Not yet exercised against a
-real database — see `supabase/migrations/README.md`.
+`lib/supabase/admin.ts`'s service-role client. Exercised against a real,
+local Postgres database in Phase 4.2A — every policy above was confirmed
+with anon-key queries that saw exactly the published/visible rows and
+nothing else — see `supabase/migrations/README.md`.
 
 Public read should be narrow and intentional. A public trip view should not reveal private operational data such as supplier costs, internal notes, customer lists, or payment records.
 

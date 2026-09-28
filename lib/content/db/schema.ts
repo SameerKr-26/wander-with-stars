@@ -1,21 +1,22 @@
 /**
- * Hand-authored row types for the Phase 4.1 schema (`supabase/migrations/`).
+ * Hand-maintained row types, refining the Phase 4.1 schema
+ * (`supabase/migrations/`) beyond what `lib/supabase/database.types.ts` can
+ * express.
  *
- * NOT `lib/supabase/database.types.ts` — that file is the real generated
- * source of truth once a database is reachable (`npm run db:types`), and
- * stays the committed Phase 1 placeholder (`Tables: Record<string, never>`)
- * until then; hand-editing it would contradict its own "regenerated, never
- * hand-edited" header and make a future real generation silently overwrite
- * work no diff would explain. These types exist so `lib/content/db/` can be
- * strongly typed against the schema this project actually migrated
- * (mirrored column-for-column from each `supabase/migrations/*.sql` file)
- * without waiting on that generation step. Every query in
- * `lib/content/db/repository.ts` pins its result to one of these with
- * `.returns<T>()`, rather than trusting the placeholder `Database` generic
- * on the client itself.
- *
- * Delete this file once `npm run db:types` has run against a real database
- * and `repository.ts` is updated to use the generated types directly.
+ * As of Phase 4.2A, `database.types.ts` is real, generated output (`npm run
+ * db:types:local`) — no longer a placeholder — so this file is NOT a
+ * stand-in for it anymore. It still exists, deliberately, for one reason:
+ * every CHECK-constrained status/kind/category column (`trips.content_status`,
+ * `trip_departures.status`, `trip_media.kind`, `trip_policy_sections.kind`,
+ * `trip_important_notes.category`) generates as plain `string`/
+ * `string | null` in the real output, because a Postgres CHECK constraint
+ * is not a real enum type the generator can introspect. `lib/content/db/map.ts`
+ * relies on these being literal unions (`AVAILABILITY_BY_DEPARTURE_STATUS`'s
+ * `Partial<Record<TripDepartureStatus, ...>>`, `mapMedia`'s discriminated
+ * `kind` switch) for real exhaustiveness checking — that's what this file
+ * still provides. `lib/content/db/repository.ts` pins each query's result to
+ * one of these with `.returns<T>()`, layered on top of the now-correctly-typed
+ * client rather than replacing it.
  */
 
 export interface HostRow {

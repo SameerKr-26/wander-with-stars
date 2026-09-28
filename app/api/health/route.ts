@@ -36,8 +36,9 @@ const PROBE_TIMEOUT_MS = 5_000;
 /**
  * PostgREST codes meaning "the request arrived and was understood, but the
  * table does not exist". That is a successful connectivity result: it proves
- * we reached Supabase, authenticated, and got a considered answer. Until the
- * schema lands in Phase 5 this is the expected healthy response.
+ * we reached Supabase, authenticated, and got a considered answer — true
+ * whether or not the Phase 4.1 schema exists, since `PROBE_RELATION` is
+ * deliberately never a real table.
  */
 const TABLE_MISSING_CODES = new Set(['PGRST205', 'PGRST202', '42P01']);
 
@@ -128,8 +129,15 @@ async function checkDatabase(): Promise<Check> {
   try {
     const supabase = await createClient();
 
+    // Phase 4.2A: `lib/supabase/database.types.ts` is now real, generated
+    // types with a specific table-name union — `PROBE_RELATION` is
+    // deliberately outside it (see that constant's own comment), so `.from`
+    // no longer accepts it as a plain string literal. The cast documents
+    // that mismatch rather than hiding it; it does not weaken the check
+    // itself, which still runs the exact same query against the exact same
+    // (never real) relation name.
     const { error } = await supabase
-      .from(PROBE_RELATION)
+      .from(PROBE_RELATION as never)
       .select('*')
       .limit(1)
       .abortSignal(AbortSignal.timeout(PROBE_TIMEOUT_MS));
