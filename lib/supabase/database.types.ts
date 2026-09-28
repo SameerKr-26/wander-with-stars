@@ -1,10 +1,11 @@
 /**
  * Generated Supabase database types.
  *
- * Generated in Phase 4.2A, refreshed in Phase 4.3 (adds `admin_roles`),
- * against a real, locally-migrated Supabase/Postgres instance (`npx
- * supabase start` / `supabase db reset`) — no longer the Phase 1
- * placeholder. Regenerate, never hand-edit:
+ * Generated in Phase 4.2A, refreshed in Phase 4.3 (adds `admin_roles`) and
+ * Phase 4.4 (adds `bookings`, `booking_participants`, `payments`), against
+ * a real, locally-migrated Supabase/Postgres instance (`npx supabase
+ * start` / `supabase db reset`) — no longer the Phase 1 placeholder.
+ * Regenerate, never hand-edit:
  *
  *   npm run db:types:local   (local dev stack — `npx supabase start` first)
  *   npm run db:types         (a linked remote project — requires
@@ -12,11 +13,12 @@
  *
  * CHECK-constrained text columns (`trips.content_status`,
  * `trip_departures.status`, `trip_media.kind`, `trip_policy_sections.kind`,
- * `trip_important_notes.category`, `admin_roles.role`, ...) generate as
- * plain `string`/`string | null` here — Postgres CHECK constraints aren't
- * real enum types, so this generator has no way to know their literal
- * value sets. See `lib/content/db/schema.ts` and `lib/admin/roles.ts` for
- * the hand-maintained, literal-typed refinements of those columns.
+ * `trip_important_notes.category`, `admin_roles.role`, `bookings.status`,
+ * `payments.status`, ...) generate as plain `string`/`string | null` here —
+ * Postgres CHECK constraints aren't real enum types, so this generator has
+ * no way to know their literal value sets. See `lib/content/db/schema.ts`,
+ * `lib/admin/roles.ts` and `lib/booking/status.ts` for the hand-maintained,
+ * literal-typed refinements of those columns.
  *
  * It is committed to version control so that CI type-checks against the same
  * schema the application expects.
@@ -52,6 +54,109 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      booking_participants: {
+        Row: {
+          booking_id: string
+          created_at: string
+          full_name: string
+          id: string
+          is_lead: boolean
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          full_name: string
+          id?: string
+          is_lead?: boolean
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          full_name?: string
+          id?: string
+          is_lead?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_participants_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bookings: {
+        Row: {
+          contact_email: string
+          contact_name: string
+          contact_phone: string | null
+          created_at: string
+          id: string
+          participant_count: number
+          reference: string
+          snapshot_departure_date: string
+          snapshot_destination: string
+          snapshot_price_amount: number
+          snapshot_price_currency: string
+          snapshot_return_date: string | null
+          snapshot_trip_slug: string
+          snapshot_trip_title: string
+          status: string
+          traveller_id: string | null
+          trip_departure_id: string
+          updated_at: string
+        }
+        Insert: {
+          contact_email: string
+          contact_name: string
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          participant_count: number
+          reference: string
+          snapshot_departure_date: string
+          snapshot_destination: string
+          snapshot_price_amount: number
+          snapshot_price_currency: string
+          snapshot_return_date?: string | null
+          snapshot_trip_slug: string
+          snapshot_trip_title: string
+          status?: string
+          traveller_id?: string | null
+          trip_departure_id: string
+          updated_at?: string
+        }
+        Update: {
+          contact_email?: string
+          contact_name?: string
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          participant_count?: number
+          reference?: string
+          snapshot_departure_date?: string
+          snapshot_destination?: string
+          snapshot_price_amount?: number
+          snapshot_price_currency?: string
+          snapshot_return_date?: string | null
+          snapshot_trip_slug?: string
+          snapshot_trip_title?: string
+          status?: string
+          traveller_id?: string | null
+          trip_departure_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_trip_departure_id_fkey"
+            columns: ["trip_departure_id"]
+            isOneToOne: false
+            referencedRelation: "trip_departures"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       guides: {
         Row: {
@@ -159,6 +264,53 @@ export type Database = {
             columns: ["trip_id"]
             isOneToOne: false
             referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount: number
+          booking_id: string
+          captured_at: string | null
+          created_at: string
+          currency: string
+          id: string
+          provider: string
+          provider_reference: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          booking_id: string
+          captured_at?: string | null
+          created_at?: string
+          currency: string
+          id?: string
+          provider: string
+          provider_reference?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          booking_id?: string
+          captured_at?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          provider?: string
+          provider_reference?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
             referencedColumns: ["id"]
           },
         ]
@@ -689,7 +841,28 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      booking_status_transition_is_valid: {
+        Args: { p_from: string; p_to: string }
+        Returns: boolean
+      }
+      bookings_confirm_seats: {
+        Args: { p_departure_id: string; p_seats: number }
+        Returns: undefined
+      }
+      bookings_release_seats: {
+        Args: {
+          p_departure_id: string
+          p_from_confirmed: boolean
+          p_seats: number
+        }
+        Returns: undefined
+      }
+      bookings_reserve_seats: {
+        Args: { p_departure_id: string; p_seats: number }
+        Returns: undefined
+      }
       current_admin_role: { Args: never; Returns: string }
+      generate_booking_reference: { Args: never; Returns: string }
       trip_departure_is_visible: {
         Args: { p_departure_id: string }
         Returns: boolean

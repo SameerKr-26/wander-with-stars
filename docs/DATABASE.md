@@ -194,48 +194,137 @@ Optional add-on costs. Fields: `trip_id`, `name`, `price_amount`,
 
 ## 4. Commerce
 
-### bookings
-Fields:
-- id
-- booking_reference
-- user_id
-- trip_departure_id
-- status
-- currency
-- subtotal
-- discount_amount
-- total_amount
-- amount_paid
-- amount_due
-- created_at
-- updated_at
+**Implemented (Phase 4.4)** — domain architecture only, no checkout UI, no
+payment gateway integration, no webhook handler —
+`supabase/migrations/20260928190958_create_booking_domain_tables.sql`. This
+is a deliberately narrower subset of the fields originally sketched below
+than what shipped; see each table's own reconciliation note for what was
+cut and why, and that migration's header for the full reasoning.
 
-### booking_guests
-Traveller-specific information associated with booking.
+### bookings
+A traveller's reservation against one `trip_departures` row — not the
+trip's content, which it snapshots rather than joins live to (see
+"Commercial snapshot" below). Renamed `booking_reference` to `reference`,
+`user_id` to `traveller_id` (nullable — no traveller-authentication system
+exists yet; see that column's own migration comment), and replaced
+`currency`/`subtotal`/`discount_amount`/`total_amount`/`amount_paid`/
+`amount_due` with a single `snapshot_price_amount`/`snapshot_price_currency`
+pair: no coupon/discount system exists yet to subtract against, and
+partial-payment tracking (`amount_paid` vs. `amount_due`) is exactly the
+richer state `payment_installments` below was for — deferred with it.
+
+Fields: `id`, `reference` (unique, generated — see "Booking reference"
+below), `trip_departure_id`, `traveller_id` (nullable), `contact_name`,
+`contact_email`, `contact_phone` (nullable — the minimum identity a booking
+needs before/without a traveller account), `participant_count`, `status`
+(`pending | confirmed | cancelled | completed` — see "Booking lifecycle"
+below), seven `snapshot_*` fields (see below), `created_at`, `updated_at`.
+
+### booking_participants
+Renamed from `booking_guests`. One row per traveller a booking represents
+— deliberately separate from `bookings` so a group booking needs no
+duplicated booking rows. Fields: `id`, `booking_id`, `full_name`, `is_lead`
+(at most one per booking, enforced by a partial unique index),
+`created_at`. Intentionally minimal — no passport, government ID, date of
+birth or medical information; none has an established requirement yet
+(docs/SECURITY.md "collect only information needed").
 
 ### payments
-Fields:
-- id
-- booking_id
-- provider
-- provider_payment_id
-- amount
-- currency
-- status
-- payment_method
-- idempotency_key
-- metadata
-- created_at
-- updated_at
+Fields: `id`, `booking_id`, `provider` (free text — no gateway hardcoded),
+`provider_reference` (nullable, unique per provider via a partial index —
+see "Webhook idempotency" below), `amount`, `currency`, `status` (`pending
+| succeeded | failed | refunded` — separate from `bookings.status`
+entirely), `captured_at` (nullable), `created_at`, `updated_at`. Dropped
+`payment_method` and `metadata` (no gateway integration exists yet to
+populate either meaningfully) and `idempotency_key` (the `(provider,
+provider_reference)` partial unique index already serves that purpose —
+see below — without a second, parallel key to keep in sync with it).
 
-### payment_installments
-For partial payment schedules.
+### Booking reference
+Customer-facing, never the internal UUID —
+`public.generate_booking_reference()` produces `WWS-` + 8 unambiguous
+base32-style characters (excludes `0`/`O`/`1`/`I`); a `before insert`
+trigger (`bookings_assign_reference`) fills it in when left null, retrying
+up to 10 times against the table's own `unique` constraint (the actual
+uniqueness guarantee) rather than trusting the generator's already-low
+collision odds alone.
 
-### refunds
-Tracks refund requests/results separately from original payments.
+### Commercial snapshot
+`bookings.snapshot_trip_title`, `snapshot_trip_slug`, `snapshot_destination`,
+`snapshot_departure_date`, `snapshot_return_date`, `snapshot_price_amount`,
+`snapshot_price_currency` — the commercial facts of one transaction, fixed
+at booking time, never re-read from `trips`/`trip_departures` for
+historical display. Deliberately not the whole trip/departure row: an
+itinerary correction, a reworded FAQ or a new host has no commercial
+meaning for an existing booking. Each field is one fact a receipt or a
+support conversation needs to state confidently regardless of what the
+live content says today — verified by an integration test that edits the
+trip's title after booking and confirms the snapshot is unaffected.
 
-### coupons
-Must have server-side eligibility and amount validation.
+### Departure capacity / seat reservation
+`trip_departures.capacity` / `seats_reserved` / `seats_confirmed` already
+existed (Phase 4.1) with exactly the constraints this needed
+(`seats_confirmed <= seats_reserved <= capacity`) — no new commercial
+inventory table was added. Three functions
+(`bookings_reserve_seats`/`bookings_release_seats`/`bookings_confirm_seats`)
+and three `bookings` triggers (`before insert`/`before update`/`before
+delete`) keep those counters and a booking's lifecycle in lock-step:
+inserting a booking atomically reserves its `participant_count` seats
+(raising, aborting the whole insert, if capacity is unavailable);
+confirming moves the same count into `seats_confirmed`; cancelling or
+deleting releases it. See "Concurrency" below for why the reservation step
+is safe under simultaneous requests.
+
+### Booking lifecycle
+`pending -> confirmed -> completed`, plus `cancelled` from either `pending`
+or `confirmed`; `cancelled`/`completed` are terminal. Enforced twice —
+`lib/booking/status.ts` (the future application-layer reference) and
+`booking_status_transition_is_valid()` + the `bookings_before_update`
+trigger (the actual, only enforcement point today, since no
+booking-write application layer exists yet). Deliberately narrower than
+the DRAFT/PENDING_PAYMENT/CONFIRMED/PARTIALLY_PAID/BALANCE_DUE/COMPLETED
+model this document originally sketched (see §12) — that richer model is
+what a future partial-payment/instalment feature would need; this phase
+doesn't have one yet.
+
+### Payment lifecycle
+`pending -> succeeded | failed`, and `succeeded -> refunded` once a future
+refund flow exists (not built this phase — no refund business rules have
+been supplied, and none are invented here). Entirely independent of
+`bookings.status`: a booking can exist while payment is pending, and a
+booking is never auto-confirmed merely because a payment row exists —
+confirming a booking is a deliberate, separate write.
+
+### Webhook idempotency
+Not implemented this phase (no webhook handler exists), but the schema is
+ready for it: `payments_provider_reference_unique`, a partial unique index
+on `(provider, provider_reference) where provider_reference is not null`.
+A future webhook handler can `insert` each delivered event's payment
+attempt directly and let the index itself reject a duplicate/retried
+delivery, rather than a hand-rolled "have I seen this event" check —
+multiple providers may reuse the same reference string independently
+(verified by an integration test), and multiple payment attempts that
+never got a provider reference at all don't collide with each other.
+
+### Concurrency
+`bookings_reserve_seats` is one `UPDATE ... WHERE ... RETURNING`-shaped
+statement: Postgres holds the row lock on the `trip_departures` row for
+the duration of both the capacity check and the increment, so two
+concurrent booking attempts against the same departure's last seat
+serialize on that lock — the second transaction's `WHERE` clause
+re-evaluates `seats_reserved` only after the first has committed, and
+correctly sees no capacity left. No read-then-write race exists anywhere
+in JavaScript; nothing in the application layer ever increments
+`seats_reserved` directly. Verified with an integration test that fires
+five concurrent single-seat booking attempts at a two-seat departure and
+confirms exactly two succeed.
+
+### Deferred (a future phase, once the features they support are real)
+`payment_installments` (partial payment schedules), `refunds` (a dedicated
+table — for now, a future refund is a payments-table
+`status: 'refunded'` row, documented above, not a new table), `coupons`
+(server-side eligibility/amount validation, once a discount system
+exists). None are built or stubbed this phase.
 
 ## 5. Reviews
 
@@ -325,22 +414,24 @@ Store only what is necessary for user experience and debugging.
 ## 11. Important relationships
 
 ```text
-profile
+profile (not built yet — Phase 4.5+)
   |
-  +-- bookings --> booking_guests
-  |
+  +-- bookings --> booking_participants   (implemented, Phase 4.4 —
+  |                                        traveller_id nullable until
+  |                                        profile exists)
   +-- communities --> community_members
   |
   +-- wishlist
 
 trip
   |
-  +-- trip_departures
+  +-- trip_departures                      (Phase 4.1)
         |
-        +-- bookings
-              |
+        +-- bookings                       (Phase 4.4 — snapshots trip/
+              |                             departure facts; does not
+              |                             live-join them for history)
+              +-- booking_participants
               +-- payments
-              +-- guests
 
 trip_departure
   |
@@ -352,11 +443,22 @@ trip_departure
 ## 12. State models
 
 ### Booking
-DRAFT → PENDING_PAYMENT → CONFIRMED → PARTIALLY_PAID → BALANCE_DUE → COMPLETED
 
-Alternate:
-PENDING_PAYMENT → PAYMENT_FAILED
-CONFIRMED → CANCELLED → REFUND_PENDING → REFUNDED
+**Implemented (Phase 4.4), narrower than originally sketched here** — see
+§4's "Booking lifecycle" for the full reasoning:
+
+pending → confirmed → completed
+
+Alternate: pending → cancelled, confirmed → cancelled (both terminal)
+
+The richer model originally sketched for this section —
+DRAFT → PENDING_PAYMENT → CONFIRMED → PARTIALLY_PAID → BALANCE_DUE → COMPLETED,
+with PENDING_PAYMENT → PAYMENT_FAILED and
+CONFIRMED → CANCELLED → REFUND_PENDING → REFUNDED — remains the intended
+model for whenever partial payments and refunds become real features
+(docs/ROADMAP.md Phase 6); this phase's `payments.status`
+(`pending | succeeded | failed | refunded`, §4) is where that nuance lives
+today instead of a richer booking-status enum.
 
 ### Trip departure
 DRAFT → PUBLISHED → BOOKING_OPEN → ALMOST_FULL → SOLD_OUT → IN_PROGRESS → COMPLETED
@@ -443,3 +545,27 @@ role/approval before a change to `trip_policy_sections` reaches whatever `public
 read policies expose, distinct from the role allowed to edit gallery
 captions or itinerary summaries. Not implemented yet — see docs/RBAC.md for
 where that role distinction belongs once it exists.
+
+**Implemented (Phase 4.4)**: `bookings`, `booking_participants` and
+`payments` have RLS *enabled* but deliberately *zero* policies for `anon`
+or `authenticated` — not even a self-read policy, and not an "admins can
+read every ..." policy either, unlike Phase 4.3's content tables. Two
+reasons, both temporary:
+
+- No traveller-authentication architecture exists yet to scope a "read
+  your own bookings" policy against — `bookings.traveller_id` is null for
+  every row today, and writing that policy against an identity system that
+  doesn't exist would be untestable, premature RLS.
+- No admin booking-management UI exists yet (explicitly out of scope this
+  phase) to justify an admin-read policy the way Phase 4.3 added one for
+  trip content — a policy with nothing to consume it would be a feature
+  added merely because it's possible.
+
+Every access path today is the service-role client only
+(`lib/supabase/admin.ts`), after an application-layer authorization check
+— the same `lib/admin/` pattern Phase 4.3 established, which a future
+booking-operations surface reuses rather than reinvents (see
+docs/ARCHITECTURE.md's Phase 4.4 section for the intended
+content-administration / departure-management / booking-operations
+boundary). RLS stays enabled regardless, so a real policy added later
+takes effect immediately with no separate "turn RLS on" migration step.

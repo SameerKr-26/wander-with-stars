@@ -60,6 +60,21 @@ every privileged write requires an authenticated session with a qualifying
 service-role client is ever reached. See docs/RBAC.md's "Content
 administration" section for the full role/transition model.
 
+**Implemented (Phase 4.4)** — the booking domain (`bookings`,
+`booking_participants`, `payments`): RLS is enabled with zero policies for
+`anon` or `authenticated` on all three tables, deliberately — no
+traveller-identity architecture exists yet to scope a real "read your own
+bookings" policy against, and writing one now would be untestable,
+premature RLS (docs/DATABASE.md §14 explains the reasoning in full). Every
+access path today is the service-role client, after an application-layer
+authorization check, reusing Phase 4.3's `lib/admin/` pattern rather than
+introducing a second one. Booking creation and status transitions are
+enforced at the database layer (triggers — see docs/DATABASE.md §4) precisely
+*because* no application write-layer exists yet to enforce them instead;
+that enforcement does not move to JavaScript once one does, it gains a
+second, redundant check the same way `lib/admin/transitions.ts` already
+duplicates its own SQL trigger's rules.
+
 ## 5. RLS
 
 For every protected table answer:

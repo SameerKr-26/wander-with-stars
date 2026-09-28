@@ -657,3 +657,115 @@ Phase 4.3 report), and no admin UI for media, accommodation, transport,
 meeting points, important notes, extras, FAQs, policy sections, or
 hosts/guides management (schema and RLS reads would support them; no
 authoring UI was built this phase).
+
+## 16. Booking & order domain (Phase 4.4)
+
+The transaction architecture underneath a future checkout — not checkout
+itself. No booking-creation UI, no payment gateway, no webhook handler, no
+`lib/booking/repository.ts` write layer exists yet; everything here is the
+durable data model and the database-side guarantees a future booking flow
+will write against.
+
+### What's separated, and why
+
+```text
+trips / trip_departures   -- WHAT the trip is, WHEN it departs (Phase 4.1)
+        |
+        v
+bookings                  -- a traveller's reservation against ONE departure,
+        |                     with a fixed commercial snapshot (see below) —
+        |                     never a live join back to current trip content
+        +-- booking_participants   -- who is actually travelling
+        +-- payments               -- money moved against the booking,
+                                       independent status, never assumed to
+                                       auto-confirm the booking
+```
+
+Content, commercial inventory, booking, payment and traveller identity stay
+five separate concerns on purpose (this phase's own brief) — see
+docs/DATABASE.md §4 for the full field-level design and the reconciliation
+against that document's original, richer sketch.
+
+### Content immutability boundary
+
+A booking's `snapshot_*` fields are written once, at booking time, and
+never re-derived from `trips`/`trip_departures` for historical display — a
+later edit to the trip's title, price, itinerary or host cannot silently
+rewrite what a traveller already bought. Verified by an integration test
+that edits a trip's title after booking and confirms the booking's
+snapshot is unaffected (`tests/integration/booking-domain.test.ts`).
+
+### Concurrency-safe seat reservation
+
+`trip_departures.capacity`/`seats_reserved`/`seats_confirmed` already
+existed (Phase 4.1); this phase adds three SQL functions
+(`bookings_reserve_seats`, `bookings_confirm_seats`,
+`bookings_release_seats`) and three `bookings` triggers (`before
+insert`/`before update`/`before delete`) that keep them in lock-step with
+a booking's own lifecycle, entirely inside the database — no
+read-capacity-then-write-booking race exists in application code, because
+there is no application code in the reservation path at all yet. See
+docs/DATABASE.md §4's "Concurrency" note for exactly how the single atomic
+`UPDATE` makes two simultaneous requests for the last seat serialize
+correctly; verified by an integration test that fires five concurrent
+booking attempts at a two-seat departure and confirms exactly two succeed.
+
+### Authentication assumption
+
+`bookings.traveller_id` references `auth.users`, nullable — no traveller-
+authentication UI exists yet (Phase 4.5+). Until it does, a booking
+identifies who made it via `contact_name`/`contact_email`/`contact_phone`
+directly on the row (a "guest checkout" shape, not a parallel account
+system). Once real traveller accounts exist, `traveller_id` starts getting
+populated; the column is not renamed or restructured to make that
+possible.
+
+### RLS / privacy
+
+`bookings`, `booking_participants` and `payments` have RLS enabled with
+*zero* policies for `anon` or `authenticated` — not a gap, a deliberate
+stance documented in docs/DATABASE.md §14: no identity architecture exists
+yet to scope a "read your own bookings" policy against, and no admin
+booking UI exists yet to justify an admin-read policy the way Phase 4.3
+added one for trip content. Every access path is the service-role client,
+after an application-layer check — the same `lib/admin/` pattern Phase 4.3
+established.
+
+### The intended content / departure / booking boundary
+
+Three separate concerns, kept in three separate places, none merged into
+one generic admin table:
+
+- **Content administration** (`app/admin/`, `lib/admin/`, Phase 4.3) — a
+  trip's own fields, itinerary, inclusions/exclusions, and its
+  `content_status` lifecycle.
+- **Departure management** (also Phase 4.3's `lib/admin/repository.ts` —
+  `createDeparture`/`updateDeparture`) — a departure's date, price,
+  capacity and its own `status`.
+- **Booking operations** (not built yet) — would manage `bookings`,
+  `booking_participants` and `payments` directly, reusing
+  `lib/admin/authorize.ts`'s `requireAdminRole` pattern rather than
+  reinventing authorization a third time, but living in its own module
+  (`lib/booking/` today holds only the pure domain logic — status
+  transitions, snapshot mapping, validation — a future
+  `lib/booking/repository.ts` would sit alongside it, not inside
+  `lib/admin/repository.ts`).
+
+One known integration risk, deliberately not fixed this phase (fixing it
+means touching Phase 4.3's already-built admin UI, out of scope here): the
+Phase 4.3 departure edit form can still set `seats_reserved`/
+`seats_confirmed` directly, and this phase's booking triggers also write
+those same columns. Once real bookings exist, a manual admin edit there
+can drift from the true reserved count. A future phase should make those
+two columns admin-read-only (derived from real bookings) rather than
+directly editable.
+
+### What remains before this is a real booking system
+
+No booking-creation Server Action or UI, no payment gateway integration,
+no webhook handler (though the schema is idempotency-ready — see
+docs/DATABASE.md §4's "Webhook idempotency"), no refund processing, no
+booking-management admin UI, no traveller-facing booking history (blocked
+on Phase 4.5's traveller-authentication system). None of this is stubbed
+or half-built — the domain foundation is real and tested, the flows that
+would write to it do not exist yet.
