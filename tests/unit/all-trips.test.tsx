@@ -61,26 +61,28 @@ const bali = trip({
   styleScores: { relaxation: 75 },
 });
 
-const georgia = trip({
-  id: 'g',
-  slug: 'georgia',
-  title: 'Georgia Adventure',
-  destination: 'Tbilisi',
-  country: 'Georgia',
+const premiumAdventure = trip({
+  id: 'p',
+  slug: 'premium-adventure-test',
+  title: 'Premium Adventure (Test Fixture)',
+  destination: 'Nowhereville',
+  country: 'Elsewhere',
   departureDate: '2027-01-18',
   durationNights: 9,
   price: { amount: 90000, currency: 'INR' },
   styleScores: { adventure: 90 },
 });
 
-const ALL = [vietnam, bali, georgia];
+const ALL = [vietnam, bali, premiumAdventure];
 
 describe('AllTripsCatalogue', () => {
   it('renders every trip passed to it', () => {
     render(<AllTripsCatalogue trips={ALL} />);
     expect(screen.getByRole('heading', { name: 'Northern Vietnam' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Bali Escape' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Georgia Adventure' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Premium Adventure (Test Fixture)' }),
+    ).toBeInTheDocument();
   });
 
   it('every trip links to its real, distinct /trips/[slug] route — no dead links', () => {
@@ -95,10 +97,9 @@ describe('AllTripsCatalogue', () => {
       'href',
       '/trips/bali',
     );
-    expect(screen.getByRole('link', { name: 'View Georgia Adventure' })).toHaveAttribute(
-      'href',
-      '/trips/georgia',
-    );
+    expect(
+      screen.getByRole('link', { name: 'View Premium Adventure (Test Fixture)' }),
+    ).toHaveAttribute('href', '/trips/premium-adventure-test');
     for (const link of links) {
       expect(link.getAttribute('href')).toMatch(/^\/trips\/[a-z0-9-]+$/);
     }

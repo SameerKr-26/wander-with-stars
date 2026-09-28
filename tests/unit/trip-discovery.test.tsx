@@ -60,12 +60,12 @@ const bali = trip({
   styleScores: { relaxation: 75 },
 });
 
-const georgia = trip({
-  id: 'g',
-  slug: 'georgia',
-  title: 'Georgia Adventure',
-  destination: 'Tbilisi',
-  country: 'Georgia',
+const premiumAdventure = trip({
+  id: 'p',
+  slug: 'premium-adventure-test',
+  title: 'Premium Adventure (Test Fixture)',
+  destination: 'Nowhereville',
+  country: 'Elsewhere',
   departureDate: '2027-01-18',
   durationNights: 9,
   price: { amount: 90000, currency: 'INR' },
@@ -84,7 +84,7 @@ const kyoto = trip({
   styleScores: { culture: 88 },
 });
 
-const ALL = [vietnam, bali, georgia, kyoto];
+const ALL = [vietnam, bali, premiumAdventure, kyoto];
 
 /** Opens the Refine drawer via its primary trigger. */
 async function openRefine(user: ReturnType<typeof userEvent.setup>) {
@@ -108,10 +108,9 @@ describe('rendering', () => {
       'href',
       '/trips/bali',
     );
-    expect(screen.getByRole('link', { name: 'View Georgia Adventure' })).toHaveAttribute(
-      'href',
-      '/trips/georgia',
-    );
+    expect(
+      screen.getByRole('link', { name: 'View Premium Adventure (Test Fixture)' }),
+    ).toHaveAttribute('href', '/trips/premium-adventure-test');
     expect(screen.getByRole('link', { name: 'View Kyoto in Autumn' })).toHaveAttribute(
       'href',
       '/trips/kyoto',
@@ -234,7 +233,9 @@ describe('Refine drawer', () => {
       await openRefine(user);
       await user.click(screen.getByLabelText('Above ₹75,000'));
 
-      expect(screen.getByRole('heading', { name: 'Georgia Adventure' })).toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { name: 'Premium Adventure (Test Fixture)' }),
+      ).toBeInTheDocument();
       expect(screen.queryByText('Northern Vietnam')).not.toBeInTheDocument();
       expect(screen.queryByText('Bali Escape')).not.toBeInTheDocument();
     });
@@ -262,7 +263,9 @@ describe('Refine drawer', () => {
       await user.click(screen.getByLabelText('Adventure'));
 
       expect(screen.getByRole('heading', { name: 'Northern Vietnam' })).toBeInTheDocument();
-      expect(screen.getByRole('heading', { name: 'Georgia Adventure' })).toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { name: 'Premium Adventure (Test Fixture)' }),
+      ).toBeInTheDocument();
       expect(screen.queryByText('Bali Escape')).not.toBeInTheDocument();
       expect(screen.queryByText('Kyoto in Autumn')).not.toBeInTheDocument();
     });
@@ -276,7 +279,7 @@ describe('Refine drawer', () => {
 
       expect(screen.getByRole('heading', { name: 'Northern Vietnam' })).toBeInTheDocument();
       expect(screen.queryByText('Bali Escape')).not.toBeInTheDocument();
-      expect(screen.queryByText('Georgia Adventure')).not.toBeInTheDocument();
+      expect(screen.queryByText('Premium Adventure (Test Fixture)')).not.toBeInTheDocument();
       expect(screen.queryByText('Kyoto in Autumn')).not.toBeInTheDocument();
     });
 
@@ -290,7 +293,7 @@ describe('Refine drawer', () => {
       expect(screen.getByRole('heading', { name: 'Kyoto in Autumn' })).toBeInTheDocument();
       expect(screen.queryByText('Northern Vietnam')).not.toBeInTheDocument();
       expect(screen.queryByText('Bali Escape')).not.toBeInTheDocument();
-      expect(screen.queryByText('Georgia Adventure')).not.toBeInTheDocument();
+      expect(screen.queryByText('Premium Adventure (Test Fixture)')).not.toBeInTheDocument();
     });
 
     it('Relax narrows to trips scored for it', async () => {
@@ -302,7 +305,7 @@ describe('Refine drawer', () => {
 
       expect(screen.getByRole('heading', { name: 'Bali Escape' })).toBeInTheDocument();
       expect(screen.queryByText('Northern Vietnam')).not.toBeInTheDocument();
-      expect(screen.queryByText('Georgia Adventure')).not.toBeInTheDocument();
+      expect(screen.queryByText('Premium Adventure (Test Fixture)')).not.toBeInTheDocument();
       expect(screen.queryByText('Kyoto in Autumn')).not.toBeInTheDocument();
     });
 
@@ -329,7 +332,9 @@ describe('Refine drawer', () => {
 
       expect(screen.getByRole('heading', { name: 'Northern Vietnam' })).toBeInTheDocument();
       expect(screen.getByRole('heading', { name: 'Bali Escape' })).toBeInTheDocument();
-      expect(screen.getByRole('heading', { name: 'Georgia Adventure' })).toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { name: 'Premium Adventure (Test Fixture)' }),
+      ).toBeInTheDocument();
       expect(screen.queryByText('Kyoto in Autumn')).not.toBeInTheDocument();
     });
   });
@@ -343,7 +348,9 @@ describe('Refine drawer', () => {
       await user.click(screen.getByLabelText('Long (8+ nights)'));
       await user.click(screen.getByLabelText('Above ₹75,000'));
 
-      expect(screen.getByRole('heading', { name: 'Georgia Adventure' })).toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { name: 'Premium Adventure (Test Fixture)' }),
+      ).toBeInTheDocument();
       expect(screen.queryByText('Northern Vietnam')).not.toBeInTheDocument();
       expect(screen.queryByText('Bali Escape')).not.toBeInTheDocument();
     });

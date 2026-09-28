@@ -60,19 +60,25 @@ const bali = trip({
   styleScores: { relaxation: 75 },
 });
 
-const georgia = trip({
-  id: 'g',
-  slug: 'georgia',
-  title: 'Georgia Adventure',
-  destination: 'Tbilisi',
-  country: 'Georgia',
+// A synthetic, deliberately non-production fixture standing in for the
+// former "Georgia" fixture (WWS no longer presents Georgia as a sample
+// destination). Not renamed to "bali" — that name is already taken above,
+// and this row exists specifically to be a THIRD, distinct trip covering
+// the long-duration/premium-budget/adventure-style combination nothing
+// else in this fixture set does.
+const premiumAdventure = trip({
+  id: 'p',
+  slug: 'premium-adventure-test',
+  title: 'Premium Adventure (Test Fixture)',
+  destination: 'Nowhereville',
+  country: 'Elsewhere',
   departureDate: '2027-01-18',
   durationNights: 9,
   price: { amount: 90000, currency: 'INR' },
   styleScores: { adventure: 90 },
 });
 
-const ALL = [vietnam, bali, georgia];
+const ALL = [vietnam, bali, premiumAdventure];
 
 describe('EMPTY_FILTERS and hasActiveFilters', () => {
   it('starts with no active filters', () => {
@@ -103,8 +109,8 @@ describe('filterTrips — search', () => {
   });
 
   it('matches by destination', () => {
-    const result = filterTrips(ALL, { ...EMPTY_FILTERS, query: 'tbilisi' });
-    expect(result).toEqual([georgia]);
+    const result = filterTrips(ALL, { ...EMPTY_FILTERS, query: 'nowhereville' });
+    expect(result).toEqual([premiumAdventure]);
   });
 
   it('matches by country', () => {
@@ -120,7 +126,7 @@ describe('filterTrips — search', () => {
 describe('filterTrips — style', () => {
   it('matches trips with a positive score for the selected style', () => {
     const result = filterTrips(ALL, { ...EMPTY_FILTERS, styles: ['adventure'] });
-    expect(result.map((t) => t.id).sort()).toEqual(['g', 'v']);
+    expect(result.map((t) => t.id).sort()).toEqual(['p', 'v']);
   });
 
   it('an empty styles array means "all styles", not "no styles"', () => {
@@ -164,7 +170,7 @@ describe('matchesBudget', () => {
 
   it('is applied by filterTrips', () => {
     const result = filterTrips(ALL, { ...EMPTY_FILTERS, budget: 'premium' });
-    expect(result).toEqual([georgia]);
+    expect(result).toEqual([premiumAdventure]);
   });
 });
 
@@ -181,13 +187,13 @@ describe('filterTrips — month', () => {
 
 describe('filterTrips — combined filters', () => {
   it('AND-combines every active dimension', () => {
-    // Only Georgia is both 'adventure' and 'premium' budget.
+    // Only premiumAdventure is both 'adventure' and 'premium' budget.
     const result = filterTrips(ALL, {
       ...EMPTY_FILTERS,
       styles: ['adventure'],
       budget: 'premium',
     });
-    expect(result).toEqual([georgia]);
+    expect(result).toEqual([premiumAdventure]);
   });
 
   it('narrows to nothing when combined filters have no common match', () => {

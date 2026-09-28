@@ -55,24 +55,14 @@ export const DEV_UPCOMING_TRIPS: TripPreview[] = [
     travellerCount: 19,
     tagline: 'Five slower-paced nights around Ubud and Canggu, built for unwinding together.',
   },
-  {
-    id: 'dev-trip-3',
-    slug: 'sample-georgia-adventure',
-    title: 'Sample Community Trip — Georgia',
-    destination: 'Tbilisi & Kazbegi',
-    country: 'Georgia',
-    departureDate: '2027-01-18',
-    durationNights: 7,
-    price: { amount: 79000, currency: 'INR' },
-    availability: { status: 'open' },
-    host: { name: 'Development Host' },
-    heroMedia: { kind: 'placeholder' },
-    styleScores: { adventure: 90, social: 60 },
-    travellerCount: 9,
-    tagline:
-      'Seven nights through Tbilisi and Kazbegi — the most adventure-heavy departure open right now.',
-  },
 ];
+
+// A third sample trip previously stood here, presenting Georgia/Tbilisi as
+// a WWS destination — removed (not replaced with a second Bali entry) once
+// Bali/Indonesia became the destination WWS actually wants represented in
+// the sample catalogue: `dev-trip-2` above already is the Bali sample, and
+// duplicating it under a new id/slug would misrepresent the catalogue as
+// having two distinct Bali departures rather than one.
 
 /**
  * Detail-page content for each fixture trip, keyed by slug.
