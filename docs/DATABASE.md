@@ -39,69 +39,94 @@ Supports role membership and future multi-team operations.
 
 ## 3. Travel catalogue
 
-### trips
-A reusable travel product.
+**Implemented (Phase 5)** — `supabase/migrations/2026092816450{2,6,10,14,18}_*.sql`.
+Every table below matches what those five migrations actually created;
+where this section originally sketched a different name or shape, the
+change and why it happened is called out inline. Not yet applied to or
+verified against a real database — see `supabase/migrations/README.md`.
 
-Suggested fields:
-- id
-- slug
-- title
-- destination
-- country
-- summary
-- description
-- status
-- duration_days
-- duration_nights
-- base_price
-- currency
-- minimum_age / age_band where appropriate
-- published_at
-- created_at
-- updated_at
+### trips
+The reusable trip CONTENT/PRODUCT — deliberately holds no departure-specific
+commercial data (date, price, availability). Renamed from this section's
+original `status`/`base_price`/`currency`/`duration_days` sketch to match
+the domain model that actually exists in `lib/content/types.ts` and
+`lib/content/ingest/schema.ts` by the time this table was built:
+
+- id, slug (unique, `^[a-z0-9]+(-[a-z0-9]+)*$`), title, destination, country
+- duration_nights (no separate duration_days — `TripPreview.durationNights`
+  is the only duration field the app model has)
+- tagline, overview, style_scores (jsonb)
+- host_id → hosts
+- content_status (`draft | review | approved | published | archived` — see
+  "Content record" below; there is no separate `status` column — pricing/
+  availability status lives on `trip_departures` instead, not here)
+- source_reference, review_notes
+- published_at, created_at, updated_at
 
 ### trip_departures
-Specific scheduled batch/departure.
+Specific scheduled batch/departure — the commercial/bookable instance of a
+trip. Renamed `start_date`/`end_date` to `departure_date`/`return_date`, and
+`price_override` to `price_amount`/`price_currency` (a departure sets the
+real price directly; there is no separate base price on `trips` to
+"override"). `meeting_point` moved out to its own `trip_meeting_points`
+table (below) rather than a column here, since it has its own optional
+`instructions` field.
 
-Fields:
-- id
-- trip_id
-- start_date
-- end_date
-- capacity
-- seats_reserved
-- seats_confirmed
-- status
-- price_override
-- meeting_point
-- created_at
-- updated_at
+- id, trip_id, departure_date, return_date
+- price_amount (`numeric(12,2)`, never floating point), price_currency
+  (`char(3)`)
+- capacity, seats_reserved, seats_confirmed
+- guide_id → guides
+- status (`draft | published | booking_open | almost_full | sold_out |
+  in_progress | completed` — see "Trip departure" state model below)
+- created_at, updated_at
 
-Trip-to-departure is a one-to-many relationship.
+Trip-to-departure is a one-to-many relationship. A trip can be `published`
+while every one of its departures is still `draft`, and "published" is
+never conflated with "available" — that's this table's `status`, not
+`trips.content_status`.
 
-### trip_hosts
-Trip/creator association.
+### hosts
+Renamed from `trip_hosts`: a reusable person record referenced by
+`trips.host_id`, not a join table — the current domain model never
+represents more than one host per trip (`TripPreview.host` is singular).
+Fields: id, name, tagline, avatar_kind/avatar_src/avatar_alt/avatar_poster
+(mirrors `TripMedia`'s discriminated shape), created_at, updated_at.
 
-### trip_itineraries
-Fields include:
-- trip_id
-- day_number
-- title
-- narrative
-- notes
+### guides
+A departure's guide, distinct from `hosts` (a host organises/owns a trip; a
+guide leads a specific departure on the ground — the same real person may
+hold both roles, but the roles stay relationally distinct). Same shape as
+`hosts` today (`lib/content/types.ts`'s `GuidePreview = HostPreview` type
+alias) — kept as a separate table regardless, since a future divergence
+(guide certifications, host payout details, ...) needs no migration to
+separate what was never merged. Referenced by `trip_departures.guide_id`,
+not `trips` — a guide belongs to a specific departure, a host to the trip.
 
-### trip_locations
-Locations used by itinerary/map.
-
-### trip_activities
-Activities per itinerary/trip.
+### itinerary_days
+Renamed from `trip_itineraries`. Fields: id, trip_id, day_number (unique
+per trip), title, summary, created_at, updated_at. No `trip_locations` or
+`trip_activities` table exists — the current domain model
+(`TripItineraryDay`) has no activities or per-location sub-structure at
+all; see the migration's own comment for why an empty activities table
+would be "a table merely because it sounds useful," not something this
+phase builds.
 
 ### trip_media
-Image/video metadata and storage paths.
+Image/video/placeholder metadata, ordered, with at most one row per trip
+flagged `is_hero` (enforced by a partial unique index) — serves both
+`TripPreview.heroMedia` and `TripDetail.gallery`. Fields: id, trip_id,
+kind (`image | video | placeholder`), src, alt, poster, focal_point,
+is_hero, display_order, created_at.
 
-### trip_inclusions
-### trip_exclusions
+### trip_inclusions / trip_exclusions
+One row per label, ordered — the direct relational equivalent of
+`TripDetail.inclusions` / `.exclusions`'s existing flat `string[]`
+convention (deliberately not richer per-inclusion objects; see the
+migration's own comment).
+
 ### trip_faqs
+Fields: id, trip_id, question, answer, display_order, created_at.
 
 ### trip_accommodation
 One row per accommodation leg of a departure (a departure may use more than
@@ -116,35 +141,34 @@ transfer, a train). Fields: `trip_departure_id`, `mode`, `description`.
 
 ### trip_meeting_points
 One row per departure (not one-to-many — a departure has exactly one
-meeting point today). Fields: `trip_departure_id`, `location`, `time`,
-`instructions`.
+meeting point today, enforced with a unique constraint on
+`trip_departure_id`). Fields: `trip_departure_id`, `location`,
+`meeting_time` (renamed from `time` to avoid the Postgres `time` type name
+as a column identifier), `instructions`.
 
 ### trip_important_notes
 Also "Traveller Notes" (Phase 3.5C/3.6) — practical warnings and
 traveller-facing context notes are the same table, distinguished by
-`category`. Fields: `trip_id` or `trip_departure_id`, `title`, `detail`,
+`category`. Fields: `trip_id`, `title`, `detail`,
 `category` (nullable — `etiquette | weather | connectivity | money |
 cultural | health | arrival | other`, matching
-`TripTravellerNoteCategory`).
+`TripTravellerNoteCategory`). Scoped to `trip_id`, not
+`trip_departure_id` — the current domain model
+(`TripDetail.importantNotes`) has no departure-scoped variant.
 
-### trip_policies
-Cancellation/refund/payment-terms/additional-terms content. Fields:
-`trip_id`, `kind` (`cancellation | refund | payment_terms | additional`),
-`title`, `body`. See "Content lifecycle" below and §14's note on
-commercial/legal approval — this table's rows need a stricter publication
-gate than most other trip content.
+### trip_policy_sections
+Renamed from `trip_policies`. Cancellation/refund/payment-terms/
+additional-terms content. Fields: `trip_id`, `kind` (`cancellation |
+refund | payment_terms | additional`), `title`, `body`, `display_order`.
+At most one row per (trip_id, kind) for the three singular kinds
+(enforced by a partial unique index); any number of `additional` rows.
+See "Content lifecycle" below and §14's note on commercial/legal approval
+— this table's rows need a stricter publication gate than most other trip
+content; not implemented yet (see §14).
 
 ### trip_extras
 Optional add-on costs. Fields: `trip_id`, `name`, `price_amount`,
-`price_currency`, `description`.
-
-### trip_guides
-A departure's guide, distinct from `trip_hosts` (host organises/owns the
-departure; guide leads day-to-day activities on the ground — the same
-person may hold both roles, or not). Same shape as `trip_hosts` today
-(`lib/content/types.ts`'s `GuidePreview = HostPreview` type alias) — kept
-as a separate table/association regardless, since the roles are
-conceptually distinct even when their current fields happen to match.
+`price_currency`, `description`, `display_order`.
 
 ## 4. Commerce
 
@@ -352,17 +376,31 @@ Add indexes based on observed query patterns rather than blindly indexing everyt
 
 ## 14. RLS design notes
 
+**Implemented (Phase 5)** for the travel-catalogue tables in §3: `anon` and
+`authenticated` may `select` a trip only once `trips.content_status =
+'published'` (via the `trip_is_published()` helper function), a departure
+only once its own `status <> 'draft'` AND its trip is published (via
+`trip_departure_is_visible()`), and every child table (itinerary, media,
+inclusions, exclusions, notes, extras, FAQs, policy sections,
+accommodation, transport, meeting points) only once its parent trip or
+departure clears that same gate. `hosts`/`guides` are `using (true)`
+read-only — justified as non-sensitive public profile data, not an
+exception to the rule below. No `anon`/`authenticated` `insert`/`update`/
+`delete` policy exists on any of these tables; every write goes through
+`lib/supabase/admin.ts`'s service-role client. Not yet exercised against a
+real database — see `supabase/migrations/README.md`.
+
 Public read should be narrow and intentional. A public trip view should not reveal private operational data such as supplier costs, internal notes, customer lists, or payment records.
 
 Traveller policies should generally be based on auth.uid() ownership or explicit community membership.
 
 Admin access must be checked server-side and through database policy design rather than UI visibility.
 
-Commercial/legal trip content — `trip_policies` (cancellation, refund,
+Commercial/legal trip content — `trip_policy_sections` (cancellation, refund,
 payment terms, additional terms) above — needs a stricter publication gate
 than marketing copy: a future RLS policy (and the application-level review
 flow in front of it, docs/ARCHITECTURE.md §14) should require an elevated
-role/approval before a change to `trip_policies` reaches whatever `public`
+role/approval before a change to `trip_policy_sections` reaches whatever `public`
 read policies expose, distinct from the role allowed to edit gallery
 captions or itinerary summaries. Not implemented yet — see docs/RBAC.md for
 where that role distinction belongs once it exists.
