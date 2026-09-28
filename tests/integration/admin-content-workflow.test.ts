@@ -316,8 +316,14 @@ describe.skipIf(!hasCredentials || !isReachable)('admin content workflow', () =>
     const { createTrip } = await import('@/lib/admin/repository');
 
     const record = VIETNAM_WWS_7D6N_RECORD.data;
+    // Not `record.slug` directly: the real "vietnam-6n7d" row may already
+    // exist in this database (scripts/seed-vietnam-draft.ts, or the
+    // Phase 4.4A live-catalogue seed) — this test's point is that genuine
+    // Vietnam draft CONTENT stays hidden, not that it owns that exact slug,
+    // so it uses its own run-unique slug to avoid colliding with whichever
+    // real seed already ran.
     const vietnamTripId = await createTrip({
-      slug: record.slug,
+      slug: `${record.slug}-admin-workflow-test-${Date.now().toString(36)}`,
       title: record.title,
       destination: record.destination,
       country: record.country,

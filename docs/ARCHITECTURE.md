@@ -769,3 +769,37 @@ booking-management admin UI, no traveller-facing booking history (blocked
 on Phase 4.5's traveller-authentication system). None of this is stubbed
 or half-built — the domain foundation is real and tested, the flows that
 would write to it do not exist yet.
+
+## 17. Live WWS catalogue capture (Phase 4.4A)
+
+The live WWS website (<https://wander-with-stars.fripo.in>) is the primary
+source of truth for trip data — full capture methodology, findings, and
+fidelity rules: `docs/source-material/wws-live/README.md`.
+
+Three real trips were discovered and ingested through the existing
+pipeline, no new architecture introduced:
+
+```text
+docs/source-material/wws-live/catalogue/wws-live-catalogue.json   canonical
+        |                                                          capture
+        v
+lib/content/ingest/sources/{thailand-full-moon-party,bali-new-year-special}.ts
+        |  ingestDraftTripContent() — same path as the existing Vietnam source
+        v
+scripts/seed-live-catalogue.ts
+        |  seeds trip content + real trip_departures rows (dates/prices),
+        |  inserted directly against trip_departures — see that script's own
+        |  header for why departures bypass the content-ingestion schema
+        v
+local Phase 4.1 database — every trip content_status: 'draft',
+                            every departure status: 'draft'
+```
+
+All three trips (and the "Sample Community Trip — Georgia" fixture they
+replace as the public sample — see `lib/content/fixtures.ts`'s own
+comment) stay unpublished: this was automated content capture, not a human
+editorial review/approval, so publishing is left to Phase 4.3's admin
+workflow. `tests/unit/wws-live-catalogue-parity.test.ts` checks the
+ingestion sources against the canonical capture; `tests/integration/wws-live-catalogue.test.ts`
+verifies the seeded database rows and their RLS-enforced invisibility to
+anonymous readers.

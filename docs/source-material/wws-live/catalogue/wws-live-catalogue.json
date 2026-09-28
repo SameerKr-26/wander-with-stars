@@ -1,0 +1,101 @@
+{
+  "$comment": "Canonical structured capture of the live WWS trip catalogue — Phase 4.4A. Every field here was read directly from https://wander-with-stars.fripo.in (rendered DOM text and the page's own embedded trip-card JSON), not invented, paraphrased, or estimated. This file is the parity-test source of truth: tests/unit/wws-live-catalogue-parity.test.ts asserts the ingestion source files in lib/content/ingest/sources/ and the seed data in scripts/seed-live-catalogue.ts match it exactly.",
+  "retrievedAt": "2026-09-28",
+  "sourceSite": "https://wander-with-stars.fripo.in/wander-with-stars",
+  "captureMethod": "Playwright (chromium), read-only DOM/network capture — no forms submitted, no bookings/enquiries sent",
+  "trips": [
+    {
+      "packageItineraryId": "cf2ab2c3-b5f1-4ee3-8b76-17a4386deb48",
+      "sourceTitle": "Thailand Full Moon Party",
+      "sourceCountry": "Thailand",
+      "maxGroupSize": 20,
+      "departures": [
+        {
+          "sourceDepartureId": "1e2c9ce6-db92-4140-bd85-5477e38c0b08",
+          "sourceUrl": "https://wander-with-stars.fripo.in/trips/1e2c9ce6-db92-4140-bd85-5477e38c0b08",
+          "startDate": "2026-10-25",
+          "endDate": "2026-10-31",
+          "priceAmount": 49999,
+          "priceCurrency": "INR"
+        },
+        {
+          "sourceDepartureId": "b8d6fddf-07b1-4369-b71e-fce61ae91878",
+          "sourceUrl": "https://wander-with-stars.fripo.in/trips/b8d6fddf-07b1-4369-b71e-fce61ae91878",
+          "startDate": "2026-11-22",
+          "endDate": "2026-11-28",
+          "priceAmount": 59999,
+          "priceCurrency": "INR"
+        },
+        {
+          "sourceDepartureId": "e35e75cf-83b5-4bad-90db-1096d73ae3db",
+          "sourceUrl": "https://wander-with-stars.fripo.in/trips/e35e75cf-83b5-4bad-90db-1096d73ae3db",
+          "startDate": "2026-12-22",
+          "endDate": "2026-12-28",
+          "priceAmount": 64999,
+          "priceCurrency": "INR"
+        }
+      ],
+      "durationDays": 7,
+      "durationNights": 6,
+      "itineraryDayCount": 7,
+      "inclusionCount": 13,
+      "exclusionCount": 14,
+      "rawCapture": "docs/source-material/wws-live/raw/thailand-full-moon-party.txt",
+      "ingestSource": "lib/content/ingest/sources/thailand-full-moon-party.ts"
+    },
+    {
+      "packageItineraryId": "f2770033-47dc-419e-b385-2f71159c9981",
+      "sourceTitle": "Vietnam Adventure: Culture and Scenic Beauty",
+      "sourceCountry": "Vietnam",
+      "maxGroupSize": 24,
+      "departures": [
+        {
+          "sourceDepartureId": "fcda2dd0-2547-439c-bff2-52452cf1c54c",
+          "sourceUrl": "https://wander-with-stars.fripo.in/trips/fcda2dd0-2547-439c-bff2-52452cf1c54c",
+          "startDate": "2026-11-13",
+          "endDate": "2026-11-19",
+          "priceAmount": 64999,
+          "priceCurrency": "INR"
+        }
+      ],
+      "durationDays": 7,
+      "durationNights": 6,
+      "itineraryDayCount": 7,
+      "inclusionCount": 18,
+      "exclusionCount": 15,
+      "rawCapture": "docs/source-material/wws-live/raw/vietnam-adventure.txt",
+      "ingestSource": "lib/content/ingest/sources/vietnam-wws-7d6n.ts",
+      "note": "Content already ingested in Phase 3.7 from a WWS-supplied PDF, matching this live page almost verbatim — not re-ingested. inclusionCount/itineraryDayCount above match lib/content/ingest/sources/vietnam-wws-7d6n.ts's existing, already-committed content exactly. exclusionCount (15) is ONE MORE than that file's 14: the live site has an additional '5% GST and 2% TCS' exclusion line the original PDF never had — a genuine, documented drift between the two sources (not a transcription error), preserved as-is rather than silently reconciled, since the committed Phase 3.7 file is deliberately not touched this phase. This entry otherwise exists to record the now-known commercial facts (price/dates) for a new trip_departures seed row."
+    },
+    {
+      "packageItineraryId": "e14a6dff-681b-44f9-a26c-275abcc0854b",
+      "sourceTitle": "BALI New Year Special 8N/9D with Gili T & Nusa Penida",
+      "sourceCountry": "Indonesia",
+      "maxGroupSize": 24,
+      "departures": [
+        {
+          "sourceDepartureId": "c3e9c5cf-61a4-49a9-95fb-29e2e1820793",
+          "sourceUrl": "https://wander-with-stars.fripo.in/trips/c3e9c5cf-61a4-49a9-95fb-29e2e1820793",
+          "startDate": "2026-12-26",
+          "endDate": "2027-01-03",
+          "priceAmount": 68999,
+          "priceCurrency": "INR"
+        }
+      ],
+      "durationDays": 9,
+      "durationNights": 8,
+      "itineraryDayCount": 9,
+      "inclusionCount": 16,
+      "exclusionCount": 16,
+      "rawCapture": "docs/source-material/wws-live/raw/bali-new-year-special.txt",
+      "ingestSource": "lib/content/ingest/sources/bali-new-year-special.ts",
+      "knownSourceInconsistency": "The page's own Terms & Conditions section is copy-pasted from the Vietnam page and refers to 'Vietnam'/'Vietnamese' throughout — preserved verbatim in the ingested content, not corrected."
+    }
+  ],
+  "notCaptured": {
+    "hostOrGuideNames": "No trip-specific host/guide name appears on any trip page — only generic role labels ('Trip Captain', 'Trip Leader'). The site's 'Founder' (Vineet Kumar) is a company-level figure, not a per-trip host. Left absent on every trip, matching this project's 'do not fabricate' rule.",
+    "faqs": "The site links to a general company FAQ page (footer 'USEFUL LINKS'), not a trip-specific one — trip_faqs (a per-trip table) has nothing genuine to populate for any of the three trips. Not visited; out of scope for trip-level content.",
+    "media": "Trip photos exist on the source (a 'Show all photos' gallery per trip) but were not downloaded or re-hosted — copyrighted source imagery, explicitly out of scope this phase. heroMedia/gallery stay { kind: 'placeholder' } for all three trips, matching the existing Vietnam convention.",
+    "highlights": "Each trip page has a short 'Highlights' bullet list (e.g. Thailand: 'Phuket Old Town, Krabi 7 Island Tour, ...'). The current WWS domain model (lib/content/types.ts) has no field for this — largely redundant with inclusions/itinerary content already captured. Deliberately not added as a new domain field this phase (see the Phase 4.4A report); the raw text remains in each raw/ capture file for future reference."
+  }
+}

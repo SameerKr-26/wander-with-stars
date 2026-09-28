@@ -1,0 +1,41 @@
+SOURCE: https://wander-with-stars.fripo.in/trips/fcda2dd0-2547-439c-bff2-52452cf1c54c
+RETRIEVED: 2026-09-28 (via Playwright, read-only render capture)
+SOURCE TRIP TITLE: Vietnam Adventure: Culture and Scenic Beauty
+SOURCE DEPARTURE ID: fcda2dd0-2547-439c-bff2-52452cf1c54c (Nov 13–19, 2026, ₹64,999)
+SOURCE packageItineraryId: f2770033-47dc-419e-b385-2f71159c9981
+Site chrome (nav, footer, cookie banner) omitted as non-content noise.
+
+NOTE ON PARITY WITH THE EXISTING PHASE 3.7 DRAFT
+(lib/content/ingest/sources/vietnam-wws-7d6n.ts): this live page's itinerary,
+inclusions and exclusions text match that already-ingested PDF-sourced content
+almost verbatim (same day titles, same activities, same phrasing) — this is
+the same underlying WWS content, republished on the live site. The Phase 3.7
+record is NOT modified by this phase (see the Phase 4.4A report for why); this
+file exists to document that the live site independently confirms it, and to
+supply the commercial facts (price, dates) the PDF alone never had: ₹64,999,
+Nov 13–19 2026, max group size 24 — used only for a new trip_departures row,
+not to alter the existing ingested trip content record.
+================================================================================
+
+Vietnam Adventure: Culture and Scenic Beauty
+Vietnam · Nov 13 – 19, 2026 · 7 days · 1–24 guests
+
+About this Experience
+
+Begin your journey in Ho Chi Minh City with a vibrant exploration of its cultural landmarks. Travel to Da Nang, known for its stunning beaches and iconic bridges, and take part in thrilling activities like a Coconut Basket Boat Ride and a visit to Ba Na Hills. Journey to the ancient lantern city of Hoi An for breathtaking views and local flavors. Cruise through Halong Bay, kayak amidst limestone islands, and discover Hanoi's unique train street. This trip offers an unforgettable blend of food, fun, and discoveries in Vietnam.
+
+[Day-by-day itinerary, inclusions, exclusions, "Know Before You Go" facts,
+cancellation policy and Terms & Conditions all match
+lib/content/ingest/sources/vietnam-wws-7d6n.ts's existing PDF-sourced content
+— see that file for the full, already-canonical text. One verbatim difference
+worth recording: this live page's Terms & Conditions section correctly says
+"Vietnam"/"Vietnamese" throughout (unlike the Bali page's T&Cs, which
+mistakenly reuse Vietnam-specific wording — see bali-new-year-special.txt).]
+
+Cancellation Policy (live site; not present in the PDF source)
+Booking Amount: INR 21,000 per person, non-refundable.
+Full Payment: The remaining balance must be paid 30 days prior to the trip departure date.
+Cancellation 30–21 Days Before Departure: 50% of the total trip amount will be charged as a cancellation fee.
+Cancellation Within 21 Days of Departure: No refund will be provided for cancellations made less than 21 days before the trip.
+
+Price shown: ₹64,999 · PER PERSON · + 5% GST · for 7 days
