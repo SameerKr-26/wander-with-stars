@@ -403,19 +403,43 @@ existing type with no shape change. Path-format validation (bucket
 naming, allowed extensions) belongs to whichever module owns the Storage
 convention once real uploads exist — deliberately not built in this phase.
 
-### Future Supabase integration seam
+### Supabase integration seam (implemented, Phase 4.2)
 
-`lib/content/queries.ts`'s functions already return `Promise<ContentState<T>>`
-and are called only from `lib/content/queries.ts`, never
-`lib/content/fixtures.ts` directly (see that file's own header comment) —
-exactly the seam a future Supabase-backed implementation needs: each
-function's *body* becomes a query against `lib/supabase/server.ts`, its
-signature does not change, and no UI component notices the difference.
-The ingestion pipeline in this section feeds that same seam from the other
-side — `ContentRecord<TripDetail>` at `status: 'published'` is what a
-future `trips`/`trip_departures` row (docs/DATABASE.md §3) represents once
-Supabase tables exist. Not built in this phase: the tables themselves, a
-CMS, an admin upload panel, or booking/payments.
+`lib/content/queries.ts`'s functions return `Promise<ContentState<T>>` and
+are called only from `lib/content/queries.ts`, never `lib/content/fixtures.ts`
+directly (see that file's own header comment) — the seam a Supabase-backed
+implementation needed, kept exactly as originally designed: each function's
+*body* dispatches to fixtures or to a database query (`lib/content/db/`)
+behind `lib/content/db/source.ts`'s explicit `CONTENT_SOURCE` switch, the
+signature never changes, and no UI component notices which one answered it.
+
+`lib/content/db/` is the data-access layer that seam now dispatches to:
+
+- `repository.ts` — server-only (`import 'server-only'`), queries Supabase
+  through `lib/supabase/server.ts`'s existing session-aware client (never
+  `lib/supabase/admin.ts`), relying entirely on the Phase 4.1 RLS policies
+  for visibility — it applies no `content_status`/departure `status` filter
+  of its own.
+- `schema.ts` — hand-authored row types mirroring `supabase/migrations/*.sql`
+  column-for-column, used only until `npm run db:types` can run against a
+  reachable database and replace them with the genuinely generated
+  `lib/supabase/database.types.ts` (still the Phase 1 placeholder).
+- `map.ts` — pure functions (`mapTripPreview`, `mapTripDetail`,
+  `selectPresentableDeparture`) composing one `trips` row and the one
+  `trip_departures` row it presents with into the existing `TripPreview`/
+  `TripDetail` domain shapes (`lib/content/types.ts`), unchanged.
+
+`lib/content/queries.ts`'s dynamic `import('./db/repository')` inside each
+database-path function (rather than a top-level import) is deliberate: it
+keeps `server-only` out of the module graph entirely when
+`CONTENT_SOURCE=fixtures` (the current default — see `db/source.ts` for
+why), so every existing fixture-mode test and render path is unaffected.
+
+Not built in this phase: a CMS, an admin upload/publishing panel, or
+booking/payments. `CONTENT_SOURCE` defaults to `'fixtures'`, not
+`'database'`, because the Phase 4.1 schema has not been applied to any
+reachable database yet (see `supabase/migrations/README.md`) — flipping the
+switch is a one-variable change once it has been.
 
 ### Commercially-incomplete source content (Phase 3.7)
 

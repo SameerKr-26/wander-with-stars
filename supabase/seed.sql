@@ -1,4 +1,4 @@
--- Development seed data — Phase 5.
+-- Development seed data — Phase 4.1.
 --
 -- Deliberately minimal, and deliberately fake-looking: every row here
 -- exists to exercise the schema and RLS policies just created, not to look

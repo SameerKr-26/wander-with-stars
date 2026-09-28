@@ -1,4 +1,4 @@
--- Hosts and guides — Phase 5, docs/DATABASE.md §3.
+-- Hosts and guides — Phase 4.1, docs/DATABASE.md §3.
 --
 -- Two separate tables with an identical shape today, matching the existing
 -- application-layer decision (`lib/content/types.ts`'s `GuidePreview =

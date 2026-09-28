@@ -4,7 +4,7 @@ Every schema change lives here as a timestamped SQL migration, applied through
 the Supabase CLI. The schema itself is built from Phase 5 onward — see
 `docs/DATABASE.md` for the intended model and `docs/ROADMAP.md` for ordering.
 
-**Phase 5 established the production content schema** (`hosts`, `guides`,
+**Phase 4.1 established the production content schema** (`hosts`, `guides`,
 `trips`, `itinerary_days`, `trip_media`, `trip_inclusions`, `trip_exclusions`,
 `trip_important_notes`, `trip_extras`, `trip_faqs`, `trip_policy_sections`,
 `trip_departures`, `trip_accommodation`, `trip_transport`,
@@ -15,7 +15,7 @@ the placeholder committed in Phase 1: it can only be regenerated (`npm run
 db:types`) against a real, reachable, migrated database, which no session so
 far has had (no local Docker/Postgres available, and the configured remote
 project has not been linked/pushed to without explicit approval — see the
-Phase 5 report). **None of these five migrations have been applied to or
+Phase 4.1 report). **None of these five migrations have been applied to or
 verified against a real database yet.** They were written and self-reviewed
 for correctness (constraint fidelity against `lib/content/ingest/schema.ts`'s
 Zod shapes, RLS coverage, FK/index correctness) but not executed — the

@@ -39,7 +39,7 @@ Supports role membership and future multi-team operations.
 
 ## 3. Travel catalogue
 
-**Implemented (Phase 5)** — `supabase/migrations/2026092816450{2,6,10,14,18}_*.sql`.
+**Implemented (Phase 4.1)** — `supabase/migrations/2026092816450{2,6,10,14,18}_*.sql`.
 Every table below matches what those five migrations actually created;
 where this section originally sketched a different name or shape, the
 change and why it happened is called out inline. Not yet applied to or
@@ -376,7 +376,7 @@ Add indexes based on observed query patterns rather than blindly indexing everyt
 
 ## 14. RLS design notes
 
-**Implemented (Phase 5)** for the travel-catalogue tables in §3: `anon` and
+**Implemented (Phase 4.1)** for the travel-catalogue tables in §3: `anon` and
 `authenticated` may `select` a trip only once `trips.content_status =
 'published'` (via the `trip_is_published()` helper function), a departure
 only once its own `status <> 'draft'` AND its trip is published (via

@@ -1,5 +1,5 @@
 /**
- * Integration tests for the Phase 5 content schema — RLS-driven public
+ * Integration tests for the Phase 4.1 content schema — RLS-driven public
  * visibility, slug uniqueness, and anonymous write rejection.
  *
  * These hit a REAL Supabase project (local or remote), never a mock: RLS
