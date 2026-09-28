@@ -556,3 +556,104 @@ Day 4's paragraph contains a stray lone "Y" mid-sentence (page 5); Day 5 is
 titled "... & Club Night" but its body paragraph only describes the Train
 Street visit, with no club-night content anywhere (page 6). Both are called
 out in code comments and in the record's `reviewNotes`.
+
+## 15. Content administration (Phase 4.3)
+
+Establishes the first authenticated, privileged write path in the
+application — everything before this phase was either public reads or
+local/CI tooling (`scripts/`).
+
+### Route structure
+
+`app/admin/` — a sibling to `app/(marketing)/`, not nested inside it, so it
+shares only the root layout (html/body/font/globals.css) and nothing of the
+public site's header, footer, or navigation. Nothing in the public shell
+links here.
+
+```text
+app/admin/
+  layout.tsx              auth-agnostic shell (wraps login too)
+  login/page.tsx           email/password sign-in (Supabase Auth)
+  (protected)/
+    layout.tsx              session gate (UX redirect, not the security boundary)
+    page.tsx                 redirects to /admin/trips
+    trips/page.tsx            list every trip regardless of status
+    trips/new/page.tsx        create (always starts as draft)
+    trips/[id]/page.tsx        edit core fields, itinerary, inclusions/
+                                exclusions, departures, lifecycle transitions
+  actions.ts                Server Actions — the one write surface
+  _components/              shared, server-renderable form fields
+```
+
+`(protected)` is a route group specifically so `/admin/login` itself never
+inherits the "redirect if unauthenticated" check — that check lives only in
+`(protected)/layout.tsx`.
+
+### Authentication
+
+Supabase Auth email/password, via the existing browser
+(`lib/supabase/client.ts`) and session-aware server
+(`lib/supabase/server.ts`) clients — no new auth technology introduced.
+There is no sign-up page, no password-reset flow, and no traveller-facing
+account system: an admin account is the smallest possible slice of "Phase
+4.5 authentication," provisioned out-of-band with
+`scripts/grant-admin-role.ts` rather than through any UI.
+
+### Authorization
+
+Two independent layers, deliberately not just one:
+
+1. **`lib/supabase/middleware.ts`** — redirects a signed-out visitor away
+   from `/admin/*` to `/admin/login`. A UX convenience only: it proves a
+   session exists, never which role it holds.
+2. **`lib/admin/authorize.ts`'s `requireAdminRole`** — the actual boundary.
+   Re-resolves the caller's role from `admin_roles` (via
+   `lib/admin/auth.ts`) on every admin Server Component render and every
+   Server Action, independently each time. See docs/SECURITY.md §4 and
+   docs/RBAC.md's "Content administration" section for the full role model.
+
+### Data access
+
+`lib/admin/repository.ts` is the admin equivalent of
+`lib/content/queries.ts` — the one place admin code talks to Supabase — but
+intentionally NOT the same module: public reads and privileged writes stay
+in separate files with different trust boundaries, per this phase's own
+"public/admin boundary" instruction.
+
+- **Reads** use `lib/supabase/server.ts`'s session-aware client, relying on
+  the Phase 4.3 "admins can read every ..." RLS policies (docs/DATABASE.md
+  §14) — least privilege: a read RLS can authorize correctly doesn't need
+  the service-role client.
+- **Writes** use `lib/supabase/admin.ts`'s service-role client, always
+  after `requireAdminRole` has already run in the calling Server Action
+  (`app/admin/actions.ts`). No authenticated `insert`/`update`/`delete`
+  policy exists on any content table — this is the only write path.
+
+`lib/admin/transitions.ts` is the pure, DB-free lifecycle-transition table
+both the UI (which buttons to show) and `transitionTripStatus` (the actual
+gate, re-checked server-side) read from.
+
+### Local development workflow
+
+Everything above was built and verified against the Phase 4.2A local
+Docker/Supabase stack — see `supabase/migrations/README.md`'s "Local
+development database" section for the commands. To actually sign in and
+exercise the admin UI locally:
+
+```bash
+npm run db:start                                             # if not already running
+npx tsx scripts/grant-admin-role.ts you@example.test admin    # provisions an admin account
+npm run dev                                                    # then sign in at /admin/login
+```
+
+### What remains before production admin activation
+
+No deployed environment has a migrated database yet (Phase 4.2A's own
+limitation, unchanged by this phase) — `/admin` cannot do anything real
+until one does. Beyond that: no UI exists for granting/revoking roles (only
+the script), no audit/history of who made a given change beyond
+`updated_at`/`published_at` (evaluated and deliberately deferred — see the
+Phase 4.3 report), and no admin UI for media, accommodation, transport,
+meeting points, important notes, extras, FAQs, policy sections, or
+hosts/guides management (schema and RLS reads would support them; no
+authoring UI was built this phase).

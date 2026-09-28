@@ -47,6 +47,19 @@ Examples:
 - Finance manager can access payments/refunds without gaining unrelated community moderation privileges.
 - Super admin has elevated system access.
 
+**Implemented (Phase 4.3)** — the content-administration area (`/admin/*`):
+`lib/admin/authorize.ts`'s `requireAdminRole` resolves the caller's role
+fresh from the database (`admin_roles`, via `lib/admin/auth.ts`) on every
+Server Component render and every Server Action, and is the actual
+authorization boundary — never the `/admin` middleware redirect
+(`lib/supabase/middleware.ts`), which only proves a session exists, not
+which role it holds, and is documented in its own comment as a UX
+convenience, not a security boundary. No anonymous write endpoint exists:
+every privileged write requires an authenticated session with a qualifying
+`admin_roles` row, checked server-side, before `lib/supabase/admin.ts`'s
+service-role client is ever reached. See docs/RBAC.md's "Content
+administration" section for the full role/transition model.
+
 ## 5. RLS
 
 For every protected table answer:

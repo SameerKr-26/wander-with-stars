@@ -1,10 +1,10 @@
 /**
  * Generated Supabase database types.
  *
- * Generated in Phase 4.2A against a real, locally-migrated Supabase/Postgres
- * instance (Phase 4.1's five migrations applied via `npx supabase start` /
- * `supabase db reset`) — no longer the Phase 1 placeholder. Regenerate,
- * never hand-edit:
+ * Generated in Phase 4.2A, refreshed in Phase 4.3 (adds `admin_roles`),
+ * against a real, locally-migrated Supabase/Postgres instance (`npx
+ * supabase start` / `supabase db reset`) — no longer the Phase 1
+ * placeholder. Regenerate, never hand-edit:
  *
  *   npm run db:types:local   (local dev stack — `npx supabase start` first)
  *   npm run db:types         (a linked remote project — requires
@@ -12,12 +12,11 @@
  *
  * CHECK-constrained text columns (`trips.content_status`,
  * `trip_departures.status`, `trip_media.kind`, `trip_policy_sections.kind`,
- * `trip_important_notes.category`, ...) generate as plain `string`/
- * `string | null` here — Postgres CHECK constraints aren't real enum types,
- * so this generator has no way to know their literal value sets. See
- * `lib/content/db/schema.ts` for the hand-maintained, literal-typed
- * refinement of exactly those columns that `lib/content/db/repository.ts`
- * pins its query results to instead of trusting this file's looser types.
+ * `trip_important_notes.category`, `admin_roles.role`, ...) generate as
+ * plain `string`/`string | null` here — Postgres CHECK constraints aren't
+ * real enum types, so this generator has no way to know their literal
+ * value sets. See `lib/content/db/schema.ts` and `lib/admin/roles.ts` for
+ * the hand-maintained, literal-typed refinements of those columns.
  *
  * It is committed to version control so that CI type-checks against the same
  * schema the application expects.
@@ -33,6 +32,27 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      admin_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          role: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       guides: {
         Row: {
           avatar_alt: string | null
@@ -669,6 +689,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      current_admin_role: { Args: never; Returns: string }
       trip_departure_is_visible: {
         Args: { p_departure_id: string }
         Returns: boolean

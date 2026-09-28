@@ -37,6 +37,26 @@ Suggested fields:
 ### organization_members
 Supports role membership and future multi-team operations.
 
+### admin_roles
+**Implemented (Phase 4.3)** —
+`supabase/migrations/20260928183648_create_admin_roles_and_read_policies.sql`.
+Deliberately NOT the `profiles`/`roles`/`organization_members` design
+sketched above: those describe the full future traveller identity system
+(Phase 4.5+); this is a narrow, separate table holding exactly one fact —
+"this `auth.users` row may administer content, at this role" — for the
+small set of people who need it. An ordinary account has no row here at
+all, which is the correct default (no privilege), not a placeholder.
+
+Fields: `id` (references `auth.users`, primary key), `role` (`content_manager
+| admin | super_admin` — three of docs/RBAC.md's eight roles, the only ones
+with any content-administration capability in that document's own matrix),
+`created_at`, `updated_at`. RLS: a user may `select` only their own row;
+no `insert`/`update`/`delete` policy exists for `anon` or `authenticated` at
+all — granting a role is a service-role-only operation
+(`scripts/grant-admin-role.ts`), never a public or self-service write. See
+`lib/admin/roles.ts` and docs/RBAC.md's "Content administration (Phase 4.3)"
+section for the full role/permission model this backs.
+
 ## 3. Travel catalogue
 
 **Implemented (Phase 4.1) and verified against a real database (Phase 4.2A)**
@@ -394,6 +414,20 @@ exception to the rule below. No `anon`/`authenticated` `insert`/`update`/
 local Postgres database in Phase 4.2A — every policy above was confirmed
 with anon-key queries that saw exactly the published/visible rows and
 nothing else — see `supabase/migrations/README.md`.
+
+**Implemented (Phase 4.3)**: `trips`, `trip_departures`, `itinerary_days`,
+`trip_inclusions` and `trip_exclusions` each got one ADDITIONAL permissive
+`select` policy — never an edit to the Phase 4.1 policy above, which keeps
+working unchanged for every reader with no admin role — granting a
+signed-in user whose `admin_roles` row has `content_manager`, `admin` or
+`super_admin` read access regardless of `content_status`/departure `status`,
+via the shared `public.current_admin_role()` helper function. This is the
+only RLS change Phase 4.3 made: every admin WRITE still goes through the
+service-role client exactly as before, after
+`lib/admin/authorize.ts`'s application-layer role check — RLS was extended
+for admin READS only, deliberately, rather than reimplementing every
+lifecycle-transition rule a second time as SQL `with check` clauses (see
+`lib/admin/transitions.ts` and that migration's own header comment).
 
 Public read should be narrow and intentional. A public trip view should not reveal private operational data such as supplier costs, internal notes, customer lists, or payment records.
 

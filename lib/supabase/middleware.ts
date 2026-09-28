@@ -23,10 +23,13 @@ import { clientEnv } from '@/lib/env/client';
  *      this function. Building a fresh `NextResponse` afterwards drops the
  *      refreshed cookies, which logs the user out on the next request.
  *
- * No authorisation happens here. Route protection needs somewhere to redirect
- * to, and no auth pages exist yet — that arrives with Phase 4. Authorisation is
- * enforced server-side and by RLS regardless; middleware is a session concern,
- * not a security boundary (docs/SECURITY.md §4).
+ * Route protection: `/admin/*` (except `/admin/login` itself) redirects a
+ * signed-out visitor to the login page — a UX convenience only. It is
+ * deliberately NOT the security boundary (docs/SECURITY.md §4): this check
+ * only proves a valid session exists, never which role it holds, so a
+ * signed-in traveller with no `admin_roles` row would sail past it. The
+ * real gate is `lib/admin/authorize.ts`'s `requireAdminRole`, which every
+ * admin Server Component and Server Action calls again independently.
  */
 export async function updateSession(request: NextRequest): Promise<NextResponse> {
   let supabaseResponse = NextResponse.next({ request });
@@ -55,7 +58,16 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   );
 
   // Do not remove: this is what actually performs the refresh.
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { pathname } = request.nextUrl;
+  if (pathname.startsWith('/admin') && pathname !== '/admin/login' && !user) {
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = '/admin/login';
+    return NextResponse.redirect(loginUrl);
+  }
 
   return supabaseResponse;
 }
