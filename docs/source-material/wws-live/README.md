@@ -171,17 +171,15 @@ capture:
   `parity-audit-report.md` in this directory and exits non-zero if any
   `MISMATCH` or `EXTRA-FABRICATED` finding exists.
 
-### Known limitation: one departure per trip route
+### Resolved in Phase 4.4C: departure selection (was "one departure per trip route")
 
-The live site gives each departure its own URL
-(`/trips/{departureId}`), so all three of Thailand's departures are
-independently browsable there. This project's route is one per **trip
-slug**, not per departure, and `lib/content/db/map.ts`'s
-`selectPresentableDeparture` always picks the soonest bookable one for that
-route. Thailand's other two departures (Nov 22 ₹59,999, Dec 22 ₹64,999)
-exist as correctly separate, correctly priced `trip_departures` rows —
-never collapsed into one, never overwritten — but are not independently
-reachable via their own public route today. Redesigning trip routing to
-support multiple browsable departures per trip is out of scope for this
-phase (which activates the existing catalogue, not redesign trip pages) and
-is left for a future phase.
+The live site gives each departure its own URL (`/trips/{departureId}`), so
+all three of Thailand's departures are independently browsable there. This
+project's route is still one per **trip slug**, not per departure — that
+did not change — but as of Phase 4.4C, `/trips/thailand-full-moon-party`
+now shows all three departures (Oct 25 ₹49,999, Nov 22 ₹59,999, Dec 22
+₹64,999) as selectable options on that one route
+(`components/trips/departure-panel.tsx`), rather than only ever showing the
+soonest one. No new per-departure routes were introduced — see
+docs/ARCHITECTURE.md's "Departure selection (Phase 4.4C)" section for why
+that was a deliberate choice, not an oversight.

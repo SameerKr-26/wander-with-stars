@@ -190,6 +190,12 @@ export function JourneyEntry({
             </span>
           </Text>
 
+          {trip.additionalDeparturesCount ? (
+            <Text variant="small" tone="secondary">
+              {trip.additionalDeparturesCount + 1} departures available
+            </Text>
+          ) : null}
+
           {/* Secondary — style, host, the closing link. Collapsed to zero
               height at rest and revealed on hover/focus via the shared
               .wws-reveal / .wws-reveal-content mechanism (components/ui/ui.css

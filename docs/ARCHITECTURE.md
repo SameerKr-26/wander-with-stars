@@ -428,9 +428,14 @@ signature never changes, and no UI component notices which one answered it.
   `lib/content/db/map.ts` needs precise types for. See that file's own
   header for the full reasoning.
 - `map.ts` — pure functions (`mapTripPreview`, `mapTripDetail`,
-  `selectPresentableDeparture`) composing one `trips` row and the one
-  `trip_departures` row it presents with into the existing `TripPreview`/
-  `TripDetail` domain shapes (`lib/content/types.ts`), unchanged.
+  `selectPresentableDeparture`/`selectPresentableDepartures`) composing one
+  `trips` row and its `trip_departures` rows into the existing `TripPreview`/
+  `TripDetail` domain shapes (`lib/content/types.ts`). `TripPreview` still
+  composes with exactly one departure (the soonest); `TripDetail` composes
+  with the soonest one for its own top-level fields AND attaches every
+  presentable departure, ordered, as `TripDetail.departures` — Phase 4.4C's
+  multi-departure selection (see docs/DATABASE.md's `trip_departures`
+  section for the full reasoning).
 
 `lib/content/queries.ts`'s dynamic `import('./db/repository')` inside each
 database-path function (rather than a top-level import) is deliberate: it
@@ -483,6 +488,48 @@ seeded this way (Thailand, Vietnam, Bali — the real, live-captured WWS
 catalogue), how source versioning/change-detection works, and
 `scripts/audit-live-parity.ts` for the automated parity audit between the
 live source and this rebuilt site's rendered pages.
+
+### Departure selection (Phase 4.4C)
+
+Thailand Full Moon Party has three real, independently-priced-and-dated
+departures. Phase 4.4B's `/trips/[slug]` only ever showed one (whichever
+`selectPresentableDeparture` chose) — Phase 4.4C exposes all of them without
+duplicating trip content or redesigning the route structure:
+
+- **Domain model**: `TripDepartureOption` (`lib/content/types.ts`) — id,
+  departure date, optional return date, price, availability. `TripDetail`
+  gained an optional `departures: TripDepartureOption[]` field; every other
+  `TripDetail`/`TripPreview` field is unchanged, so every existing fixture
+  and every existing consumer keeps working without modification.
+  `TripPreview` also gained an optional `additionalDeparturesCount` — "how
+  many other departures exist," for the compact card, never the full list.
+- **Deriving options safely**: `lib/content/departures.ts`'s
+  `getDepartureOptions(trip)` is the one place that reads
+  `TripDetail.departures` — when it's absent (every fixture, and any real
+  trip with exactly one departure), it derives a single option from the
+  record's own top-level `departureDate`/`price`/`availability`/`id`
+  fields, so nothing downstream needs two code paths for "one departure" vs
+  "many."
+- **UI**: `components/trips/departure-panel.tsx`'s `TripDeparturePanel`
+  (client component, replacing the old static `TripHero` metadata block and
+  the standalone `TripBookingCTA`) renders nothing selector-shaped for a
+  single-departure trip — only a trip with more than one option shows the
+  radio group (`components/ui/field.tsx`'s existing `Radio`, not a bespoke
+  control, so keyboard/screen-reader behaviour comes for free), defaulting
+  to the soonest. Selecting an option updates the commercial metadata and
+  the booking-CTA copy together, from one piece of client state — the exact
+  id a future booking would need (`bookings.trip_departure_id`, Phase 4.4).
+  No URL-level departure identity (`?departure=…` or a per-departure route)
+  was introduced: nothing downstream reads the selection across a page
+  load yet (no booking flow exists to hand it to), so that would be state
+  with no consumer — revisit this decision once a real booking flow exists.
+- **Known limitation carried over from Phase 4.4B**: the live site still
+  gives each Thailand departure its own URL; this project's one-route-per-
+  trip-slug model does not. Phase 4.4C makes all three departures visible
+  and selectable on the one route rather than adding three new routes —
+  that was a deliberate choice (documented in
+  docs/source-material/wws-live/README.md's "Known limitation" section),
+  not an oversight.
 
 ### Commercially-incomplete source content (Phase 3.7)
 

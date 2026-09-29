@@ -26,7 +26,7 @@ const HOST_FIELDS = 'id, name, tagline, avatar_kind, avatar_src, avatar_alt, ava
 const TRIP_MEDIA_FIELDS = 'id, kind, src, alt, poster, focal_point, is_hero, display_order';
 
 const TRIP_DEPARTURE_FIELDS = `
-  id, departure_date, price_amount, price_currency, capacity, seats_reserved, seats_confirmed, status,
+  id, departure_date, return_date, price_amount, price_currency, capacity, seats_reserved, seats_confirmed, status,
   guides ( ${HOST_FIELDS} ),
   trip_accommodation ( name, type, description, nights ),
   trip_transport ( mode, description, display_order ),

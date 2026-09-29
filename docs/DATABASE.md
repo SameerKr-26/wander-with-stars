@@ -108,6 +108,23 @@ while every one of its departures is still `draft`, and "published" is
 never conflated with "available" — that's this table's `status`, not
 `trips.content_status`.
 
+**Public query shape (Phase 4.4C):** `lib/content/db/repository.ts` selects
+every `trip_departures` row a trip has (RLS already restricts this to ones
+the current reader may legitimately see — no extra filter here), and
+`lib/content/db/map.ts`'s `selectPresentableDepartures` (plural) narrows
+that to the presentable ones, soonest first. `mapTripPreview` still composes
+with exactly one of those (the soonest — unchanged default) for the card,
+but also reports `additionalDeparturesCount` when more than one exists.
+`mapTripDetail` goes further: it maps every presentable departure into a
+`TripDepartureOption` (`lib/content/types.ts`) and attaches the full,
+ordered list as `TripDetail.departures` — this is what lets a trip like
+Thailand Full Moon Party (3 real departures) show all three as selectable
+options on `/trips/[slug]`, instead of collapsing to whichever one is
+soonest. Trip-level content (itinerary, inclusions, exclusions, policy) is
+composed once, from the `trips`/`itinerary_days`/etc. tables — never
+duplicated per departure; only the commercial fields
+(date/return date/price/currency/availability) vary per option.
+
 ### hosts
 Renamed from `trip_hosts`: a reusable person record referenced by
 `trips.host_id`, not a join table — the current domain model never

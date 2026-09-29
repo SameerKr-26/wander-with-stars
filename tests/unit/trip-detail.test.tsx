@@ -69,10 +69,14 @@ describe('hero / arrival', () => {
   });
 
   it('shows departure, duration, price and availability metadata', async () => {
+    // Phase 4.4C: TripDeparturePanel's own CTA copy also mentions the
+    // departure date ("Not yet bookable for the 14 Nov 2026 departure...")
+    // — getAllByText, not getByText, since the date now genuinely appears
+    // twice on the page for a single-departure trip.
     const ui = await TripDetailPage({ params: Promise.resolve({ slug: KNOWN_SLUG }) });
     render(ui);
 
-    expect(screen.getByText(/14 Nov 2026/)).toBeInTheDocument();
+    expect(screen.getAllByText(/14 Nov 2026/).length).toBeGreaterThan(0);
     expect(screen.getByText(/7D\/6N/)).toBeInTheDocument();
     expect(screen.getByText(/68,000/)).toBeInTheDocument();
     expect(screen.getByText('8 spots left')).toBeInTheDocument();
@@ -194,15 +198,15 @@ describe('gallery / media', () => {
 });
 
 describe('booking state', () => {
-  it('shows the honest "booking opens soon" state, twice — hero and closing CTA — never a fake checkout', async () => {
+  it('shows the honest "booking opens soon" state — never a fake checkout', async () => {
+    // Phase 4.4C: the hero's old standalone metadata block and the closing
+    // CTA merged into one TripDeparturePanel (so both a selected departure's
+    // metadata and its booking state always agree) — one button, not two.
     const ui = await TripDetailPage({ params: Promise.resolve({ slug: KNOWN_SLUG }) });
     render(ui);
 
-    const buttons = screen.getAllByRole('button', { name: 'Booking opens soon' });
-    expect(buttons.length).toBe(2);
-    for (const button of buttons) {
-      expect(button).toBeDisabled();
-    }
+    const button = screen.getByRole('button', { name: 'Booking opens soon' });
+    expect(button).toBeDisabled();
   });
 
   it('the closing CTA returns to /trips', async () => {

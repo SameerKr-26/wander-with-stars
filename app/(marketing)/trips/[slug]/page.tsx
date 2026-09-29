@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 
 import '@/components/trips/trip-detail.css';
-import { TripBookingCTA } from '@/components/trips/trip-booking-cta';
+import { TripDeparturePanel } from '@/components/trips/departure-panel';
 import { TripEssentials } from '@/components/trips/trip-essentials';
 import { TripExtras } from '@/components/trips/trip-extras';
 import { TripFAQs } from '@/components/trips/trip-faq';
@@ -37,8 +37,10 @@ import { getTripBySlug } from '@/lib/content/queries';
  * directly, so swapping fixtures for a real Supabase query later is a
  * one-file change (docs/ROADMAP.md Phase 5) — no visual component here
  * changes. No booking logic: the itinerary engine and booking flow are
- * later milestones (docs/ROADMAP.md Phases 5–6); TripBookingCTA states that
- * honestly rather than faking a checkout.
+ * later milestones (docs/ROADMAP.md Phases 5–6); `TripDeparturePanel`
+ * (Phase 4.4C, replacing the old standalone TripBookingCTA) states that
+ * honestly rather than faking a checkout, while also owning departure
+ * selection when a trip has more than one public departure.
  *
  * An unknown slug is a real 404 via `notFound()`, not a fabricated "coming
  * soon" page for a URL that was never valid.
@@ -72,6 +74,7 @@ export default async function TripDetailPage({ params }: PageProps) {
   return (
     <>
       <TripHero trip={trip} />
+      <TripDeparturePanel trip={trip} />
       <TripOverview trip={trip} />
       <TripFirst24Hours day={firstDay} />
       <TripItinerary days={trip.itineraryPreview} />
@@ -82,7 +85,6 @@ export default async function TripDetailPage({ params }: PageProps) {
       <TripExtras extras={trip.extras} />
       <TripFAQs faqs={trip.faqs} />
       <TripPolicies policy={trip.policy} />
-      <TripBookingCTA />
     </>
   );
 }

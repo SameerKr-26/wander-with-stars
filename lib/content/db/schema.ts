@@ -118,6 +118,7 @@ export type TripDepartureStatus =
 export interface TripDepartureRow {
   id: string;
   departure_date: string;
+  return_date: string | null;
   price_amount: number | null;
   price_currency: string | null;
   capacity: number | null;

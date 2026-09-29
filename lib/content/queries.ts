@@ -52,7 +52,7 @@ async function getUpcomingTripsFromDatabase(): Promise<ContentState<TripPreview[
   const trips = rows
     .map((trip) => {
       const departure = selectPresentableDeparture(trip.trip_departures);
-      return departure ? mapTripPreview(trip, departure) : null;
+      return departure ? mapTripPreview(trip, departure, trip.trip_departures) : null;
     })
     .filter((trip): trip is TripPreview => trip !== null);
 
@@ -97,7 +97,7 @@ async function getTripBySlugFromDatabase(slug: string): Promise<ContentState<Tri
   // `TripDetail` requires.
   if (!departure) return { status: 'empty' };
 
-  return { status: 'ready', data: mapTripDetail(row, departure) };
+  return { status: 'ready', data: mapTripDetail(row, departure, row.trip_departures) };
 }
 
 /**

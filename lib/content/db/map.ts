@@ -12,6 +12,7 @@ import type {
   GuidePreview,
   HostPreview,
   TripAccommodation,
+  TripDepartureOption,
   TripDetail,
   TripExtra,
   TripFAQ,
@@ -74,9 +75,18 @@ const AVAILABILITY_BY_DEPARTURE_STATUS: Partial<Record<TripDepartureStatus, Avai
 export function selectPresentableDeparture(
   departures: TripDepartureRow[],
 ): TripDepartureRow | undefined {
+  return selectPresentableDepartures(departures)[0];
+}
+
+/**
+ * Every presentable departure of a trip, soonest first — Phase 4.4C. The
+ * plural counterpart `selectPresentableDeparture` above is built on: "the
+ * one to default to" is just this list's first element, so there is one
+ * definition of "presentable, in order" rather than two that could drift.
+ */
+export function selectPresentableDepartures(departures: TripDepartureRow[]): TripDepartureRow[] {
   const presentable = departures.filter((d) => d.status in AVAILABILITY_BY_DEPARTURE_STATUS);
-  if (presentable.length === 0) return undefined;
-  return [...presentable].sort((a, b) => a.departure_date.localeCompare(b.departure_date))[0];
+  return [...presentable].sort((a, b) => a.departure_date.localeCompare(b.departure_date));
 }
 
 function mapMedia(row: TripMediaRow): TripMedia {
@@ -194,8 +204,18 @@ function mapPolicy(rows: TripPolicySectionRow[]): TripPolicy | undefined {
  * `host` is omitted (not a placeholder) when `trip.hosts` is null — real,
  * live-captured trips (Phase 4.4B) can genuinely have no named host on
  * record.
+ *
+ * `allDepartures` (Phase 4.4C) is the trip's full departure row list, used
+ * only to compute `additionalDeparturesCount` — it defaults to `[departure]`
+ * so every existing call site (and every existing test) that only ever
+ * passed the one chosen departure keeps working unchanged, correctly
+ * reporting "no other departures" for itself.
  */
-export function mapTripPreview(trip: TripRow, departure: TripDepartureRow): TripPreview {
+export function mapTripPreview(
+  trip: TripRow,
+  departure: TripDepartureRow,
+  allDepartures: TripDepartureRow[] = [departure],
+): TripPreview {
   const availability = AVAILABILITY_BY_DEPARTURE_STATUS[departure.status];
   if (!availability) {
     throw new Error(
@@ -209,6 +229,7 @@ export function mapTripPreview(trip: TripRow, departure: TripDepartureRow): Trip
   const capacity = departure.capacity;
   const seatsLeft =
     capacity !== null ? Math.max(capacity - departure.seats_reserved, 0) : undefined;
+  const additionalDeparturesCount = selectPresentableDepartures(allDepartures).length - 1;
 
   return {
     id: departure.id,
@@ -227,6 +248,29 @@ export function mapTripPreview(trip: TripRow, departure: TripDepartureRow): Trip
     heroMedia: selectHeroMedia(trip.trip_media),
     styleScores: trip.style_scores,
     ...(trip.tagline ? { tagline: trip.tagline } : {}),
+    ...(additionalDeparturesCount > 0 ? { additionalDeparturesCount } : {}),
+  };
+}
+
+/** One presentable departure as a selectable `TripDepartureOption` — Phase 4.4C. */
+function mapDepartureOption(departure: TripDepartureRow): TripDepartureOption | null {
+  const availability = AVAILABILITY_BY_DEPARTURE_STATUS[departure.status];
+  if (!availability) return null;
+  if (!departure.price_amount || !departure.price_currency) return null;
+
+  const capacity = departure.capacity;
+  const seatsLeft =
+    capacity !== null ? Math.max(capacity - departure.seats_reserved, 0) : undefined;
+
+  return {
+    id: departure.id,
+    departureDate: departure.departure_date,
+    ...(departure.return_date ? { returnDate: departure.return_date } : {}),
+    price: { amount: departure.price_amount, currency: departure.price_currency },
+    availability: {
+      status: availability,
+      ...(seatsLeft !== undefined ? { spotsLeft: seatsLeft } : {}),
+    },
   };
 }
 
@@ -238,9 +282,20 @@ export function mapTripPreview(trip: TripRow, departure: TripDepartureRow): Trip
  * to `undefined` — never a placeholder value — when the source table has no
  * rows for this trip, so `/trips/[slug]`'s existing "skip the section
  * entirely" behaviour keeps working unchanged.
+ *
+ * `allDepartures` (Phase 4.4C, defaults to `[departure]` — same reasoning as
+ * `mapTripPreview`'s) becomes `TripDetail.departures`: every presentable
+ * departure, mapped to a selectable `TripDepartureOption`, soonest first.
  */
-export function mapTripDetail(trip: TripDetailRow, departure: TripDepartureRow): TripDetail {
-  const preview = mapTripPreview(trip, departure);
+export function mapTripDetail(
+  trip: TripDetailRow,
+  departure: TripDepartureRow,
+  allDepartures: TripDepartureRow[] = [departure],
+): TripDetail {
+  const preview = mapTripPreview(trip, departure, allDepartures);
+  const departureOptions = selectPresentableDepartures(allDepartures)
+    .map(mapDepartureOption)
+    .filter((option): option is TripDepartureOption => option !== null);
   const gallery = byDisplayOrder(trip.trip_media).map(mapMedia);
   const accommodation = departure.trip_accommodation.map(mapAccommodation);
   const transport = byDisplayOrder(departure.trip_transport).map(mapTransport);
@@ -273,5 +328,6 @@ export function mapTripDetail(trip: TripDetailRow, departure: TripDepartureRow):
     ...(policy ? { policy } : {}),
     ...(extras.length > 0 ? { extras } : {}),
     ...(departure.guides ? { guide: mapPersonPreview(departure.guides) } : {}),
+    ...(departureOptions.length > 1 ? { departures: departureOptions } : {}),
   };
 }

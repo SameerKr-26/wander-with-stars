@@ -82,6 +82,12 @@ export function TripCard({ trip }: { trip: TripPreview }) {
           </span>
         </Text>
 
+        {trip.additionalDeparturesCount ? (
+          <Text variant="small" tone="secondary">
+            {trip.additionalDeparturesCount + 1} departures available
+          </Text>
+        ) : null}
+
         {/* Secondary — host, travellers, style. Always present in the DOM,
             collapsed to zero height and revealed only where a pointer +
             hover (or keyboard focus) exist — see the shared

@@ -28,6 +28,7 @@ function makeDeparture() {
   return {
     id: 'departure-1',
     departure_date: '2099-06-01',
+    return_date: null,
     price_amount: 50000,
     price_currency: 'INR',
     capacity: 20,

@@ -1,15 +1,21 @@
 /**
- * Live WWS catalogue capture — Phase 4.4A.
+ * Live WWS catalogue capture — Phase 4.4A, activated in Phase 4.4B.
  *
  * Real local-database integration tests (this project's own convention —
  * see tests/integration/trip-content-schema.test.ts): verifies the three
  * live-captured trips (seeded via scripts/seed-vietnam-draft.ts and
- * scripts/seed-live-catalogue.ts) exist with the correct commercial facts
- * and, critically, stay invisible to anonymous/public readers — draft
- * content, exactly like every other trip this project has ingested so far.
+ * scripts/seed-live-catalogue.ts, then published via
+ * scripts/publish-live-catalogue.ts) exist with the correct commercial
+ * facts and are genuinely public — published content_status, booking_open
+ * departures, visible to an anonymous reader through the same RLS policies
+ * every other published trip relies on. (Phase 4.4A originally seeded these
+ * as draft/hidden and this file asserted exactly that; Phase 4.4B's explicit
+ * decision to publish them made that assertion stale — updated here rather
+ * than left to fail against the now-published reality.)
  *
  * Skips — does not fail — when no reachable, migrated database is
- * configured, or when the seed scripts have not been run against it yet.
+ * configured, or when the seed+publish scripts have not been run against
+ * it yet.
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -85,13 +91,13 @@ describe.skipIf(!hasCredentials || !isReachable || !seeded)('live WWS catalogue 
     expect((data as TripRow[]).map((t) => t.slug).sort()).toEqual([...LIVE_SLUGS].sort());
   });
 
-  it('every live trip is seeded as content_status: draft — none auto-published', async () => {
+  it('every live trip is published — Phase 4.4B walked each through the admin lifecycle', async () => {
     const { data } = await admin
       .from('trips')
       .select('slug, content_status')
       .in('slug', LIVE_SLUGS);
     for (const row of data as TripRow[]) {
-      expect(row.content_status).toBe('draft');
+      expect(row.content_status).toBe('published');
     }
   });
 
@@ -110,10 +116,12 @@ describe.skipIf(!hasCredentials || !isReachable || !seeded)('live WWS catalogue 
     const rows = departures as DepartureRow[];
     expect(rows).toHaveLength(3);
     expect(rows.map((d) => d.departure_date)).toEqual(['2026-10-25', '2026-11-22', '2026-12-22']);
+    // Phase 4.4C: every date stays paired with ITS OWN price — never another
+    // departure's — regardless of storage/query order.
     expect(rows.map((d) => Number(d.price_amount))).toEqual([49999, 59999, 64999]);
     for (const row of rows) {
       expect(row.price_currency).toBe('INR');
-      expect(row.status).toBe('draft');
+      expect(row.status).toBe('booking_open');
     }
   });
 
@@ -133,7 +141,7 @@ describe.skipIf(!hasCredentials || !isReachable || !seeded)('live WWS catalogue 
     expect(rows[0]?.departure_date).toBe('2026-12-26');
     expect(rows[0]?.return_date).toBe('2027-01-03');
     expect(Number(rows[0]?.price_amount)).toBe(68999);
-    expect(rows[0]?.status).toBe('draft');
+    expect(rows[0]?.status).toBe('booking_open');
   });
 
   it('Vietnam now has a real departure alongside its unchanged Phase 3.7 content', async () => {
@@ -170,17 +178,45 @@ describe.skipIf(!hasCredentials || !isReachable || !seeded)('live WWS catalogue 
     }
   });
 
-  it('none of the three live trips are visible to an anonymous reader — draft stays private', async () => {
+  it('all three live trips ARE visible to an anonymous reader — published, through RLS, not a special-case policy', async () => {
     const { data } = await anon.from('trips').select('slug').in('slug', LIVE_SLUGS);
-    expect(data).toEqual([]);
+    expect((data as TripRow[]).map((t) => t.slug).sort()).toEqual([...LIVE_SLUGS].sort());
   });
 
-  it('none of the seeded departures are visible to an anonymous reader either', async () => {
+  it('every booking_open departure is visible to an anonymous reader too', async () => {
     const { data: trips } = await admin.from('trips').select('id').in('slug', LIVE_SLUGS);
     const tripIds = (trips as { id: string }[]).map((t) => t.id);
 
-    const { data } = await anon.from('trip_departures').select('id').in('trip_id', tripIds);
-    expect(data).toEqual([]);
+    const { data } = await anon.from('trip_departures').select('id, status').in('trip_id', tripIds);
+    const rows = data as { id: string; status: string }[];
+    expect(rows).toHaveLength(5); // 3 Thailand + 1 Vietnam + 1 Bali
+    for (const row of rows) {
+      expect(row.status).toBe('booking_open');
+    }
+  });
+
+  it('Phase 4.4C: an anonymous reader querying Thailand by slug gets all 3 departures, each date paired with its own price', async () => {
+    // Same shape the content query layer (lib/content/queries.ts) reads —
+    // proves the multi-departure query works through the real, anon-key,
+    // RLS-governed client, not just the admin client used to seed it.
+    const { data: trip } = await anon
+      .from('trips')
+      .select('id, trip_departures(departure_date, price_amount, status)')
+      .eq('slug', 'thailand-full-moon-party')
+      .single();
+    const departures = (
+      trip as unknown as {
+        trip_departures: { departure_date: string; price_amount: string; status: string }[];
+      }
+    ).trip_departures;
+
+    expect(departures).toHaveLength(3);
+    const byDate = Object.fromEntries(
+      departures.map((d) => [d.departure_date, Number(d.price_amount)]),
+    );
+    expect(byDate['2026-10-25']).toBe(49999);
+    expect(byDate['2026-11-22']).toBe(59999);
+    expect(byDate['2026-12-22']).toBe(64999);
   });
 
   it('a content_manager-role reader CAN see the live trips (admin visibility, Phase 4.3 policy)', async () => {

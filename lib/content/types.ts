@@ -136,6 +136,36 @@ export interface TripPreview {
    * may not have one yet, and the UI must not fabricate a substitute.
    */
   tagline?: string;
+  /**
+   * Phase 4.4C: how many OTHER public departures this trip has, beyond the
+   * one this preview already presents (its soonest/presentable one) —
+   * undefined when there is only one, never `0`, so a card only ever shows
+   * "N departures available" when that is actually true. A count, not the
+   * departures themselves: a discovery card stays compact
+   * (docs/UX_INTERACTION_GUIDE.md §3) — the full list belongs on
+   * `/trips/[slug]` (`TripDetail.departures`).
+   */
+  additionalDeparturesCount?: number;
+}
+
+/**
+ * One selectable, publicly-presentable departure of a trip — Phase 4.4C.
+ *
+ * A trip can run more than once (Thailand Full Moon Party: three real 2026
+ * departures, each its own date and price). This is the per-departure slice
+ * a selector needs; `TripDetail.departures` is the full ordered list, and
+ * `TripDetail`'s own top-level `departureDate`/`price`/`availability` stay
+ * exactly what they already were — the soonest/default departure's values —
+ * so nothing that only ever read those flat fields needs to change.
+ */
+export interface TripDepartureOption {
+  /** The underlying `trip_departures.id` — what a future booking attaches to (`bookings.trip_departure_id`). */
+  id: string;
+  departureDate: string;
+  /** Not every departure has a known return date yet. */
+  returnDate?: string;
+  price: TripPrice;
+  availability: TripAvailability;
 }
 
 /**
@@ -309,6 +339,16 @@ export interface TripDetail extends TripPreview {
    * invents a guide by assuming the host always doubles as one.
    */
   guide?: GuidePreview;
+  /**
+   * Every public, presentable departure of this trip, ordered soonest-first
+   * — Phase 4.4C. Undefined (not `[]`) when the content layer has no
+   * per-departure breakdown to offer beyond the single departure already
+   * flattened into this record's own top-level fields (every fixture, and
+   * any real trip with exactly one departure) — `getDepartureOptions()`
+   * (lib/content/departures.ts) is the one place that should read this
+   * field, so a missing array never needs handling more than once.
+   */
+  departures?: TripDepartureOption[];
 }
 
 /* ----------------------------------------------------------- discovery */

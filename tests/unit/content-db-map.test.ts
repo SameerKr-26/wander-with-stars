@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { mapTripDetail, mapTripPreview, selectPresentableDeparture } from '@/lib/content/db/map';
+import {
+  mapTripDetail,
+  mapTripPreview,
+  selectPresentableDeparture,
+  selectPresentableDepartures,
+} from '@/lib/content/db/map';
 import type { GuideRow, HostRow, TripDepartureRow, TripDetailRow } from '@/lib/content/db/schema';
 
 /**
@@ -35,6 +40,7 @@ function makeDeparture(overrides: Partial<TripDepartureRow> = {}): TripDeparture
   return {
     id: 'departure-1',
     departure_date: '2099-06-01',
+    return_date: null,
     price_amount: 50000,
     price_currency: 'INR',
     capacity: 20,
@@ -337,5 +343,135 @@ describe('mapTripDetail', () => {
       { title: 'Weather', detail: 'Pack layers.', category: 'weather' },
       { title: 'General', detail: 'Be on time.' },
     ]);
+  });
+});
+
+describe('Phase 4.4C — multi-departure selection', () => {
+  const THAILAND_STYLE_DEPARTURES: TripDepartureRow[] = [
+    makeDeparture({
+      id: 'dep-oct',
+      departure_date: '2026-10-25',
+      return_date: '2026-10-31',
+      price_amount: 49999,
+    }),
+    makeDeparture({
+      id: 'dep-nov',
+      departure_date: '2026-11-22',
+      return_date: '2026-11-28',
+      price_amount: 59999,
+    }),
+    makeDeparture({
+      id: 'dep-dec',
+      departure_date: '2026-12-22',
+      return_date: '2026-12-28',
+      price_amount: 64999,
+    }),
+  ];
+
+  it('1. a multi-departure trip exposes every public departure, not just the presentable one', () => {
+    const trip = makeTripDetailRow();
+    const detail = mapTripDetail(trip, THAILAND_STYLE_DEPARTURES[0]!, THAILAND_STYLE_DEPARTURES);
+    expect(detail.departures).toHaveLength(3);
+  });
+
+  it('2. an unpublished (draft) departure never appears among the public options', () => {
+    const withADraft = [
+      ...THAILAND_STYLE_DEPARTURES,
+      makeDeparture({ id: 'dep-draft', departure_date: '2027-01-15', status: 'draft' }),
+    ];
+    const all = selectPresentableDepartures(withADraft);
+    expect(all).toHaveLength(3);
+    expect(all.some((d) => d.id === 'dep-draft')).toBe(false);
+  });
+
+  it("3. every departure date stays paired with its OWN price, never another departure's", () => {
+    const trip = makeTripDetailRow();
+    const detail = mapTripDetail(trip, THAILAND_STYLE_DEPARTURES[0]!, THAILAND_STYLE_DEPARTURES);
+    const byDate = Object.fromEntries(
+      detail.departures!.map((d) => [d.departureDate, d.price.amount]),
+    );
+    expect(byDate['2026-10-25']).toBe(49999);
+    expect(byDate['2026-11-22']).toBe(59999);
+    expect(byDate['2026-12-22']).toBe(64999);
+  });
+
+  it('4. departure ordering is deterministic — always soonest first, regardless of input order', () => {
+    const shuffled = [
+      THAILAND_STYLE_DEPARTURES[2]!,
+      THAILAND_STYLE_DEPARTURES[0]!,
+      THAILAND_STYLE_DEPARTURES[1]!,
+    ];
+    const ordered = selectPresentableDepartures(shuffled);
+    expect(ordered.map((d) => d.departure_date)).toEqual([
+      '2026-10-25',
+      '2026-11-22',
+      '2026-12-22',
+    ]);
+  });
+
+  it('5. the default/presentable selection is still the earliest upcoming departure', () => {
+    const shuffled = [
+      THAILAND_STYLE_DEPARTURES[1]!,
+      THAILAND_STYLE_DEPARTURES[2]!,
+      THAILAND_STYLE_DEPARTURES[0]!,
+    ];
+    expect(selectPresentableDeparture(shuffled)?.departure_date).toBe('2026-10-25');
+  });
+
+  it('6. alternate departures remain accessible on the mapped detail, each with its own id/price/date', () => {
+    const trip = makeTripDetailRow();
+    const detail = mapTripDetail(trip, THAILAND_STYLE_DEPARTURES[0]!, THAILAND_STYLE_DEPARTURES);
+    expect(detail.departures).toEqual([
+      {
+        id: 'dep-oct',
+        departureDate: '2026-10-25',
+        returnDate: '2026-10-31',
+        price: { amount: 49999, currency: 'INR' },
+        availability: { status: 'open', spotsLeft: 15 },
+      },
+      {
+        id: 'dep-nov',
+        departureDate: '2026-11-22',
+        returnDate: '2026-11-28',
+        price: { amount: 59999, currency: 'INR' },
+        availability: { status: 'open', spotsLeft: 15 },
+      },
+      {
+        id: 'dep-dec',
+        departureDate: '2026-12-22',
+        returnDate: '2026-12-28',
+        price: { amount: 64999, currency: 'INR' },
+        availability: { status: 'open', spotsLeft: 15 },
+      },
+    ]);
+  });
+
+  it('8. trip-level content (itinerary, inclusions) is not duplicated per departure', () => {
+    const trip = makeTripDetailRow({
+      itinerary_days: [{ day_number: 1, title: 'Day one', summary: 'Arrival' }],
+    });
+    const detail = mapTripDetail(trip, THAILAND_STYLE_DEPARTURES[0]!, THAILAND_STYLE_DEPARTURES);
+    // One itinerary on the trip record, shared by every departure — never
+    // one copy per departure.
+    expect(detail.itineraryPreview).toHaveLength(1);
+    expect(detail.departures).toHaveLength(3);
+  });
+
+  it('12. a trip with more than one presentable departure reports how many additional ones exist, for the card', () => {
+    const trip = makeTripDetailRow();
+    const preview = mapTripPreview(trip, THAILAND_STYLE_DEPARTURES[0]!, THAILAND_STYLE_DEPARTURES);
+    expect(preview.additionalDeparturesCount).toBe(2);
+  });
+
+  it('a single-departure trip reports no additionalDeparturesCount at all (not 0)', () => {
+    const trip = makeTripDetailRow();
+    const preview = mapTripPreview(trip, makeDeparture());
+    expect(preview.additionalDeparturesCount).toBeUndefined();
+  });
+
+  it('a single-departure TripDetail carries no departures array — getDepartureOptions() derives one instead', () => {
+    const trip = makeTripDetailRow();
+    const detail = mapTripDetail(trip, makeDeparture());
+    expect(detail.departures).toBeUndefined();
   });
 });
