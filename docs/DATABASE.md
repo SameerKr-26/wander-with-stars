@@ -57,6 +57,34 @@ all — granting a role is a service-role-only operation
 `lib/admin/roles.ts` and docs/RBAC.md's "Content administration (Phase 4.3)"
 section for the full role/permission model this backs.
 
+### traveller_profiles
+**Implemented (Phase 4.5)** —
+`supabase/migrations/20260929133252_create_traveller_profiles.sql`. This
+IS (a minimal slice of) the `profiles` design sketched above, arriving on
+schedule where `admin_roles`'s own comment already named it: "Phase 4.5+".
+Deliberately narrower than that original sketch — `username`, `bio`,
+`city`, `date_of_birth`, `phone` and `privacy settings` are all omitted,
+because nothing built this phase (no dashboard, no checkout, no community)
+needs them; adding unused columns is exactly the kind of fabricated
+functionality CLAUDE.md's own instructions warn against. `avatar_url` is
+also omitted for the same reason (no UI surface displays one yet).
+
+Fields: `id` (uuid, primary key), `user_id` (references `auth.users`,
+unique — enforces at most one profile per account), `display_name` (text,
+non-empty, CHECK-constrained), `created_at`, `updated_at`. Email is
+deliberately NOT a column here — `auth.users.email` is the one identity
+authority; see docs/ARCHITECTURE.md §18's "Identity boundary" for the full
+reasoning.
+
+RLS: a user may `select`, `insert` and `update` only the row where
+`user_id = auth.uid()` — never `USING (true)`, never another user's row,
+no enumeration. No `delete` policy: account deletion is explicitly
+deferred (it would need to reason about `auth.users`, bookings and
+payments together, a retention/data-policy decision this phase does not
+make implicitly) — see docs/SECURITY.md §4's traveller-authentication
+entry for the full RLS reasoning, and `lib/traveller/` for the
+server-side code that relies on it.
+
 ## 3. Travel catalogue
 
 **Implemented (Phase 4.1) and verified against a real database (Phase 4.2A)**

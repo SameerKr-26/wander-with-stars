@@ -13,9 +13,12 @@
 /about
 /faq
 /contact
-/login
-/signup
-/forgot-password
+/login              implemented, Phase 4.5
+/signup             implemented, Phase 4.5
+/forgot-password    implemented, Phase 4.5
+/reset-password     implemented, Phase 4.5 — not in the original sketch above;
+                     a necessary landing page for the password-recovery email
+                     link (see docs/ARCHITECTURE.md §18)
 /privacy
 /terms
 /refund-policy
@@ -24,7 +27,7 @@
 ## Traveller routes
 
 ```text
-/dashboard
+/dashboard           implemented, Phase 4.5 — minimal account landing only
 /dashboard/trips
 /dashboard/trips/[id]
 /dashboard/bookings
@@ -35,11 +38,17 @@
 /dashboard/wishlist
 /dashboard/recommendations
 /dashboard/passport
-/dashboard/profile
+/dashboard/profile   implemented, Phase 4.5 — display name only
 /dashboard/preferences
 /dashboard/notifications
 /dashboard/support
 ```
+
+Only `/dashboard` and `/dashboard/profile` exist. Every other route in this
+list remains a future-phase sketch — Phase 4.5's own brief is identity and
+account ownership, explicitly not the full dashboard. See
+docs/ARCHITECTURE.md §18 for what each deferred route would need before it
+could be built (most read bookings, which have no RLS read policy yet).
 
 ## Admin routes
 

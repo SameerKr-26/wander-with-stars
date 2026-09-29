@@ -108,6 +108,23 @@ out-of-band with `scripts/grant-admin-role.ts`, run locally against the dev
 database by someone holding the service-role key — matching this document's
 "Manage users/roles: Admin/Super Admin only" with no UI for it yet at all.
 
+## Traveller accounts (Phase 4.5 — implemented)
+
+The first real implementation of this matrix's "Manage own profile" row for
+the `traveller` role. Backing table: `traveller_profiles`
+(docs/DATABASE.md §2, `supabase/migrations/20260929133252_*.sql`) — a
+traveller's own identity/profile, not a role grant (unlike `admin_roles`,
+holding a role has no bearing on what a traveller may access; every
+signed-in account, admin or not, may manage its own `traveller_profiles`
+row). RLS enforces `user_id = auth.uid()` on select/insert/update, no
+delete policy, no admin-wide read policy — see docs/SECURITY.md §4's
+Phase 4.5 entry and `lib/traveller/` for the full model.
+
+This matrix's other traveller rows ("View own bookings", "Manage payments:
+Own only") remain document-only, same as before this phase: no
+booking-read RLS policy exists yet (docs/SECURITY.md §4 explains why that
+stays deferred), and no traveller-facing booking UI reads them regardless.
+
 ## Permission implementation notes
 
 Do not encode roles only in client state. Resolve trusted role membership from secure server/database state and enforce it in backend operations and database policies.

@@ -1,28 +1,3 @@
-/**
- * Generated Supabase database types.
- *
- * Generated in Phase 4.2A, refreshed in Phase 4.3 (adds `admin_roles`) and
- * Phase 4.4 (adds `bookings`, `booking_participants`, `payments`), against
- * a real, locally-migrated Supabase/Postgres instance (`npx supabase
- * start` / `supabase db reset`) — no longer the Phase 1 placeholder.
- * Regenerate, never hand-edit:
- *
- *   npm run db:types:local   (local dev stack — `npx supabase start` first)
- *   npm run db:types         (a linked remote project — requires
- *                             `npx supabase link`, not done in this repo)
- *
- * CHECK-constrained text columns (`trips.content_status`,
- * `trip_departures.status`, `trip_media.kind`, `trip_policy_sections.kind`,
- * `trip_important_notes.category`, `admin_roles.role`, `bookings.status`,
- * `payments.status`, ...) generate as plain `string`/`string | null` here —
- * Postgres CHECK constraints aren't real enum types, so this generator has
- * no way to know their literal value sets. See `lib/content/db/schema.ts`,
- * `lib/admin/roles.ts` and `lib/booking/status.ts` for the hand-maintained,
- * literal-typed refinements of those columns.
- *
- * It is committed to version control so that CI type-checks against the same
- * schema the application expects.
- */
 export type Json =
   | string
   | number
@@ -314,6 +289,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      traveller_profiles: {
+        Row: {
+          created_at: string
+          display_name: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       trip_accommodation: {
         Row: {

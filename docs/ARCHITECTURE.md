@@ -888,3 +888,128 @@ workflow. `tests/unit/wws-live-catalogue-parity.test.ts` checks the
 ingestion sources against the canonical capture; `tests/integration/wws-live-catalogue.test.ts`
 verifies the seeded database rows and their RLS-enforced invisibility to
 anonymous readers.
+
+## 18. Traveller authentication & accounts (Phase 4.5)
+
+Establishes traveller identity and account ownership on the existing
+Supabase Auth architecture — sign up, sign in, sign out, password recovery,
+a minimal protected account area. Deliberately NOT a full dashboard,
+booking history, or checkout (docs/ROADMAP.md's later phases).
+
+### Identity boundary
+
+```
+Supabase Auth (auth.users)       →  identity, credentials, session
+        ↓ user_id (FK, unique)
+public.traveller_profiles        →  application-level traveller data
+```
+
+`traveller_profiles` (`supabase/migrations/20260929133252_create_traveller_profiles.sql`)
+holds exactly one field beyond identity/timestamps: `display_name`. No
+email, no password, no verification state — `auth.users` (read via the
+session, never duplicated) is the one identity authority, matching
+docs/SECURITY.md §3's "application-level authorisation must be resolved
+from trusted server/database data" and this phase's own explicit
+"do not duplicate email verification state" instruction.
+
+An admin identity (`admin_roles`) and a traveller identity
+(`traveller_profiles`) are independent, non-exclusive facts about the same
+`auth.users` row — an account can hold both, one, or neither. Neither table
+references the other; `lib/admin/auth.ts`'s `getAdminSession` and
+`lib/traveller/auth.ts`'s `getTravellerSession` each resolve their own
+identity independently and never assume the other's absence or presence.
+
+### Auth technology
+
+Exactly the existing Supabase Auth architecture already wired up for admin
+login (`lib/supabase/client.ts`, `lib/supabase/server.ts`,
+`lib/supabase/middleware.ts`) — no second auth provider, no new session
+mechanism. Every traveller-auth form (`components/account/*.tsx`) uses the
+browser client directly, the same `signInWithPassword`/`signUp`/`signOut`
+pattern `app/admin/_components/admin-login-form.tsx` already established.
+Session cookies are managed entirely by `@supabase/ssr` — nothing here
+touches `localStorage`.
+
+Email confirmation: `supabase/config.toml`'s `[auth.email]
+enable_confirmations = false` means this project's local (and, per that
+same config, whatever environment it's deployed to) Supabase instance signs
+a new account in immediately — no verification email, no "check your
+inbox" interstitial to build. `components/account/signup-form.tsx` still
+handles the case where `signUp()` returns no session (that flag flipped on
+in a future environment) with an honest message, rather than assuming a
+session it wasn't granted.
+
+Password recovery: `resetPasswordForEmail` → `/reset-password` (a route
+not listed in docs/ROUTES.md's original sketch, added as a necessary
+sibling of `/forgot-password` — see that page's own comment) →
+`auth.updateUser({ password })`. Required
+`supabase/config.toml`'s `[auth] additional_redirect_urls` to include the
+exact `/reset-password` URL for both `127.0.0.1` and `localhost` — GoTrue
+silently falls back to the bare `site_url` for any `redirectTo` that isn't
+an exact allow-list match, which is local-environment configuration, never
+pushed to the real/shared Supabase project.
+
+### Profile creation
+
+Explicit, server-side, idempotent — not a database trigger.
+`app/(account)/actions.ts`'s `createTravellerProfileAction` runs right
+after a successful client-side `signUp()`, using the session-aware server
+client (never service-role) so `traveller_profiles`'s own RLS is the write
+boundary. `lib/traveller/profile.ts`'s `ensureTravellerProfile` upserts
+with `onConflict: 'user_id', ignoreDuplicates: true`, so calling it more
+than once for the same account — a retry, or the defensive call in
+`app/dashboard/layout.tsx` for any account that reaches `/dashboard` with a
+session but no profile row — never errors and never overwrites an existing
+display name.
+
+### Routes
+
+```
+/login              sign in
+/signup             sign up
+/forgot-password    request a password-reset email
+/reset-password     land here from that email, set a new password
+/dashboard           protected: minimal account landing
+/dashboard/profile   protected: edit display name
+```
+
+`app/(account)/` (a route group, no marketing header/footer — CONTROL
+world, not the cinematic public experience) holds the four public auth
+pages. `app/dashboard/` (top-level, matching `app/admin/`'s own top-level
+placement) holds the two protected pages, gated by
+`app/dashboard/layout.tsx` — the traveller equivalent of
+`app/admin/(protected)/layout.tsx`: a UX-convenience session check, not the
+security boundary (RLS is). `lib/supabase/middleware.ts` redirects a
+signed-out `/dashboard/*` visitor to `/login`, identically to its existing
+`/admin/*` → `/admin/login` redirect — same "convenience, not boundary"
+caveat, documented in that file's own comment.
+
+Every other `docs/ROUTES.md`-sketched traveller route
+(`/dashboard/trips`, `/bookings`, `/payments`, `/documents`, `/community`,
+`/wishlist`, `/recommendations`, `/passport`, `/preferences`,
+`/notifications`, `/support`) is deliberately NOT built — this phase
+establishes identity and account ownership only.
+
+No traveller-auth link was added to `components/layout/site-header.tsx`.
+That file is a separately-tracked, uncommitted brand/logo workstream this
+project's own working agreement holds untouched pending visual review
+(CLAUDE.md's "Brand asset" section) — adding account navigation to it now
+would mix an unrelated phase's edits into that pending change. A traveller
+reaches `/login` directly today; wiring a compact signed-in control into
+the header is deferred to whenever that workstream lands.
+
+### Deferred (out of scope for this phase)
+
+Bookings RLS: `bookings`/`booking_participants`/`payments` still have zero
+`anon`/`authenticated` policies (Phase 4.4's own deliberate state,
+docs/SECURITY.md §4) — this phase does NOT add a "read your own bookings"
+policy, because no account page reads bookings yet. `bookings.traveller_id`
+already references `auth.users(id)` and stays nullable (guest checkout);
+`traveller_profiles.user_id` references the same table independently. A
+future booking-history view (`/dashboard/trips`, `/dashboard/bookings`)
+will need its own carefully-scoped RLS policy at that point, not before.
+
+Also deferred: social login, OTP/magic-link auth, account deletion (touches
+`auth.users`, bookings and payments together — a retention/data-policy
+decision, not a safe implicit one), avatar/bio/city/phone profile fields,
+public traveller profiles, and any admin-side view of traveller accounts.

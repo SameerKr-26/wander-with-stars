@@ -75,6 +75,24 @@ that enforcement does not move to JavaScript once one does, it gains a
 second, redundant check the same way `lib/admin/transitions.ts` already
 duplicates its own SQL trigger's rules.
 
+**Implemented (Phase 4.5)** — traveller authentication: the
+traveller-identity architecture the Phase 4.4 note above was waiting on now
+exists (`traveller_profiles`, `lib/traveller/`), but the booking RLS gap it
+described is still deliberately open. `bookings`/`booking_participants`/
+`payments` still have zero `anon`/`authenticated` policies — this phase
+does not add a "read your own bookings" policy, because no account page
+reads bookings yet (docs/ARCHITECTURE.md §18's "Deferred" section). Adding
+one now, untested against a real read path, would be exactly the kind of
+speculative RLS this document already warns against. `traveller_profiles`
+itself DOES get real, tested ownership RLS (own-row select/insert/update,
+`user_id = auth.uid()`, never `USING (true)`) — see docs/DATABASE.md §2's
+own entry for the full policy set, and
+`tests/integration/traveller-auth.test.ts` for the cross-user-rejection and
+enumeration-rejection tests that verify it. Every traveller-auth form uses
+the browser/server session-aware clients only
+(`lib/supabase/client.ts`/`server.ts`) — no service-role client appears
+anywhere in `lib/traveller/` or `app/(account)/`, `app/dashboard/`.
+
 ## 5. RLS
 
 For every protected table answer:

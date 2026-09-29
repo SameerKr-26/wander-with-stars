@@ -30,6 +30,13 @@ import { clientEnv } from '@/lib/env/client';
  * signed-in traveller with no `admin_roles` row would sail past it. The
  * real gate is `lib/admin/authorize.ts`'s `requireAdminRole`, which every
  * admin Server Component and Server Action calls again independently.
+ *
+ * `/dashboard/*` gets the identical treatment (Phase 4.5) — redirect a
+ * signed-out visitor to `/login`, same UX-convenience-not-security-boundary
+ * caveat. The real gate there is `app/dashboard/layout.tsx`'s own session
+ * check plus `traveller_profiles`'s RLS, not this redirect. Every other
+ * route (public marketing, trip pages) is untouched: this only ever adds a
+ * redirect for these two prefixes, never a blanket auth requirement.
  */
 export async function updateSession(request: NextRequest): Promise<NextResponse> {
   let supabaseResponse = NextResponse.next({ request });
@@ -66,6 +73,12 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   if (pathname.startsWith('/admin') && pathname !== '/admin/login' && !user) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = '/admin/login';
+    return NextResponse.redirect(loginUrl);
+  }
+
+  if (pathname.startsWith('/dashboard') && !user) {
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = '/login';
     return NextResponse.redirect(loginUrl);
   }
 
