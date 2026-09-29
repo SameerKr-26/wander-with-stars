@@ -270,7 +270,52 @@ below), `trip_departure_id`, `traveller_id` (nullable), `contact_name`,
 `contact_email`, `contact_phone` (nullable — the minimum identity a booking
 needs before/without a traveller account), `participant_count`, `status`
 (`pending | confirmed | cancelled | completed` — see "Booking lifecycle"
-below), seven `snapshot_*` fields (see below), `created_at`, `updated_at`.
+below), seven `snapshot_*` fields (see below), `expires_at`,
+`idempotency_key`, `created_at`, `updated_at`.
+
+**`expires_at` / pending-hold expiry (Phase 4.6)** —
+`supabase/migrations/20260929170452_*.sql`. Nullable `timestamptz`, set
+automatically to `now() + 30 minutes` by `bookings_before_insert` for
+every new pending booking (Phase 4.4's own trigger, extended rather than
+duplicated) and cleared whenever a booking leaves `pending`. A new
+function, `release_expired_booking_holds()`, cancels every pending booking
+past its `expires_at` via a plain status `UPDATE` — that update runs
+through the EXISTING `bookings_before_update_trigger`
+(Phase 4.4), so seat release happens exactly the same way an ordinary
+cancellation's does, not a second, parallel code path. Idempotent by
+construction: the function's `WHERE status = 'pending' AND expires_at <
+now()` only ever matches rows nothing has touched yet, so calling it twice
+in a row is a no-op the second time. Called automatically at the front of
+every new booking attempt (inside `bookings_before_insert`, before
+reserving seats) rather than by a scheduler — none exists yet — but the
+function is a standalone, independently-callable entry point specifically
+so a future scheduled job can call it directly with no migration change.
+
+**`idempotency_key` (Phase 4.6)** — nullable `uuid`, uniquely indexed where
+not null. A client-generated key, one per booking-review session
+(`crypto.randomUUID()`, generated once by
+`components/booking/booking-wizard.tsx` and resent on every retry of the
+same submission). `create_pending_booking()` (below) checks for an
+existing booking with the same key before doing anything else and returns
+it unchanged if one exists — a double-click, a network retry, or a
+resubmitted form become a no-op replay, never a second booking. This is
+strictly additive: a caller that never supplies a key (any direct SQL, a
+future internal tool) gets an ordinary, non-deduplicated insert.
+
+**`create_pending_booking(...)` (Phase 4.6)** — the one atomic entry point
+a booking-creation flow calls: re-validates the departure itself
+(`trip_departures.status in ('booking_open', 'almost_full')`,
+`trips.content_status = 'published'`) inside the function rather than
+trusting an earlier application-layer check, reads
+price/currency/dates/title/slug/destination from `trips`/`trip_departures`
+itself (never accepts them as parameters — see "Commercial snapshot"
+below and docs/SECURITY.md's Phase 4.6 entry for why), inserts the booking
+and its participants together, and returns the resulting row. One RPC call
+is one transaction, so a rejected booking never leaves a partial row or
+consumed capacity behind. Called only via the service-role client
+(`lib/booking/repository.ts`) — `bookings`/`booking_participants` still
+have no `anon`/`authenticated` INSERT policy (unchanged from Phase 4.4),
+so this is the only write path that reaches either table.
 
 ### booking_participants
 Renamed from `booking_guests`. One row per traveller a booking represents
@@ -621,3 +666,30 @@ docs/ARCHITECTURE.md's Phase 4.4 section for the intended
 content-administration / departure-management / booking-operations
 boundary). RLS stays enabled regardless, so a real policy added later
 takes effect immediately with no separate "turn RLS on" migration step.
+
+**Implemented (Phase 4.6)**: traveller-authentication now exists (Phase
+4.5), so exactly ONE of those two temporary conditions above is resolved
+— the first reason no longer applies, and Phase 4.6 adds exactly the
+policy that reason was waiting on:
+
+```sql
+create policy "a traveller can read their own bookings"
+  on public.bookings
+  for select
+  to authenticated
+  using (auth.uid() = traveller_id);
+```
+
+Narrowest possible shape: a signed-in traveller reads only their own
+`bookings` rows (never another's, never a guest booking — `traveller_id`
+is null for those, and `auth.uid()` can never equal null). The SECOND
+reason (no admin booking-management UI) still applies unchanged — no
+admin-read policy was added, and none is planned until that UI exists.
+`booking_participants` and `payments` get NO new policy either — nothing
+built this phase reads either back, and a guest's own confirmation is
+shown from the creation call's direct return value, never a subsequent
+read (see docs/ARCHITECTURE.md §19's "RLS / privacy" for the full
+reasoning, including why this is deliberately not a "reference alone
+grants access" model). Every WRITE still goes exclusively through
+`create_pending_booking()` via the service-role client — this phase adds
+one read policy, zero write policies.

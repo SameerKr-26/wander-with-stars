@@ -143,20 +143,27 @@ test.describe('/trips/thailand-full-moon-party — departure selection', () => {
   }) => {
     await page.goto('/trips/thailand-full-moon-party');
 
+    // Phase 4.6: the CTA is a real "Book this departure" link now, not the
+    // static "Not yet bookable" placeholder Phase 4.4C shipped — its href
+    // (the exact trip_departure_id) is what actually proves the CTA tracks
+    // the current selection.
     const novRadio = page.getByRole('radio', { name: /22 Nov 2026/ });
     await novRadio.check();
     await expect(novRadio).toBeChecked();
-    await expect(page.getByText(/Not yet bookable for the 22 Nov 2026 departure/)).toBeVisible();
+    const novHref = await page
+      .getByRole('link', { name: 'Book this departure' })
+      .getAttribute('href');
 
     const decRadio = page.getByRole('radio', { name: /22 Dec 2026/ });
     await decRadio.check();
     await expect(decRadio).toBeChecked();
-    await expect(page.getByText(/Not yet bookable for the 22 Dec 2026 departure/)).toBeVisible();
-    // The Nov CTA copy is gone now that Dec is selected — proves the CTA
-    // tracks the current selection, not just "a" departure.
-    await expect(
-      page.getByText(/Not yet bookable for the 22 Nov 2026 departure/),
-    ).not.toBeVisible();
+    const decHref = await page
+      .getByRole('link', { name: 'Book this departure' })
+      .getAttribute('href');
+
+    expect(novHref).toMatch(/^\/booking\/.+/);
+    expect(decHref).toMatch(/^\/booking\/.+/);
+    expect(decHref).not.toBe(novHref);
   });
 
   test('the trip card on /trips/all indicates 3 departures are available', async ({ page }) => {

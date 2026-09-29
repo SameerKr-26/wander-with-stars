@@ -1013,3 +1013,131 @@ Also deferred: social login, OTP/magic-link auth, account deletion (touches
 `auth.users`, bookings and payments together — a retention/data-policy
 decision, not a safe implicit one), avatar/bio/city/phone profile fields,
 public traveller profiles, and any admin-side view of traveller accounts.
+
+## 19. Traveller booking & reservation flow (Phase 4.6)
+
+The first real write path through Phase 4.4's booking domain — a
+traveller can now actually create a `pending` booking against a real,
+specific departure. No payment, no confirmation, no booking admin UI:
+this closes the gap between "the schema and atomic seat-reservation
+primitive exist" (Phase 4.4) and "something can actually call them
+safely" (this phase).
+
+### Departure identity
+
+`/booking/[departureId]` is keyed by the exact `trip_departure_id` a
+traveller selected on `/trips/[slug]` — `TripDeparturePanel`'s "Book this
+departure" link (`components/trips/departure-panel.tsx`) points at
+`selected.id`, never a trip slug or array position. The whole booking
+wizard (`components/booking/booking-wizard.tsx`) is one client component
+holding this id in its own closure across all four steps, so it cannot be
+lost or re-derived incorrectly mid-flow. This id is a convenience for
+routing/display only — `submitBookingAction` re-reads and re-validates the
+same departure authoritatively a second time, from scratch, at the moment
+of booking (see "Server-side pricing authority" below).
+
+### Server-side mutation boundary
+
+```
+components/booking/booking-wizard.tsx (client)
+        |  submitBookingAction(rawInput)
+        v
+app/booking/[departureId]/actions.ts   Zod-validates; derives travellerId
+        |                              from the session, never the client
+        v
+lib/booking/repository.ts               createPendingBooking()
+        |  service-role client (no anon/authenticated INSERT policy
+        |  exists on bookings/booking_participants — Phase 4.4's own
+        |  deliberate RLS stance, unchanged)
+        v
+create_pending_booking()  (Postgres function, one RPC call = one
+        transaction: re-validates the departure, reads price/dates/title
+        from trips/trip_departures itself, inserts the booking AND its
+        participants, or raises and rolls back everything)
+```
+
+Reads (`fetchBookableDepartureSummary`, display-only context for the
+booking page) use the existing session-aware client and the same public
+RLS policies `/trips/[slug]` already relies on — no elevated privilege
+needed for a read RLS already permits.
+
+### Server-side pricing/availability authority
+
+The client never submits `price_amount`/`price_currency`/departure dates
+as trusted values — `bookingCreateInputSchema`
+(`lib/booking/validation.ts`) has no such fields, and
+`create_pending_booking`'s own SQL signature has no price parameter at
+all. Every commercial fact in the booking's snapshot is read by the
+function itself, from `trips`/`trip_departures`, at the moment of
+insertion. The function also re-validates bookability itself
+(`trip_departures.status in ('booking_open','almost_full')` and
+`trips.content_status = 'published'`) rather than trusting that whatever
+called it already checked — defense in depth against a race between an
+earlier application-layer check and this insert.
+
+### Seat reservation
+
+Unchanged from Phase 4.4: `bookings_before_insert`'s call to
+`bookings_reserve_seats` is what actually reserves seats, inside the same
+statement as the booking row's own insert — a booking can never exist
+without its capacity having actually been reserved. Phase 4.6 adds nothing
+to that arithmetic; it only adds a real caller.
+
+### Pending-booking expiry
+
+`bookings.expires_at` (new) defaults to 30 minutes after creation for
+every pending booking, set by `bookings_before_insert`. Each new booking
+attempt first calls `release_expired_booking_holds()` (also new), which
+cancels every pending booking whose hold has lapsed — reusing
+`bookings_before_update_trigger`'s existing seat-release logic rather than
+duplicating it, so a hold is released exactly the same way a normal
+cancellation is. No scheduler exists yet; `release_expired_booking_holds()`
+is deliberately a standalone, independently-callable function so a future
+cron job or scheduled Edge Function can also call it directly without a
+migration change. See `supabase/migrations/20260929170452_*.sql`'s own
+header for the full reasoning, and docs/DATABASE.md §4's updated entry.
+
+### Idempotency
+
+One client-generated `idempotency_key` (a UUID from `crypto.randomUUID()`,
+generated once when the booking wizard mounts and reused on every retry of
+that same submission) per booking attempt. `bookings.idempotency_key` is
+nullable and uniquely indexed where not null;
+`create_pending_booking` checks for an existing booking with the same key
+before doing anything else and returns it unchanged if found — a
+double-click, a network retry, or a resubmitted form all become a no-op
+replay rather than a second booking. Scope: one booking-review session
+(until success or the traveller starts over); lifetime: as long as the
+booking row itself exists (no separate expiry — reusing the same key after
+a real booking already exists there is simply always a replay of that same
+booking).
+
+### Authenticated vs. guest
+
+`bookings.traveller_id` is derived from `getTravellerSession()`
+(`lib/traveller/auth.ts`, unchanged from Phase 4.5) server-side inside
+`submitBookingAction` — never accepted as a field the client submits
+(`bookingCreateInputSchema` has no `travellerId` key at all, so nothing
+forged in the raw payload can reach it). No session → `null`, the
+existing guest-booking shape Phase 4.4 already modelled. Both paths go
+through the exact same `create_pending_booking` call; there is no second,
+parallel booking system for either mode.
+
+### RLS / privacy
+
+One new, narrow policy: `auth.uid() = bookings.traveller_id` for `select`
+— a signed-in traveller may read their own bookings (e.g. revisiting the
+confirmation page after a refresh), never anyone else's, and never a guest
+booking (traveller_id is null for those). No policy on
+`booking_participants` or `payments` — nothing built this phase reads
+either back. Guest confirmation is shown from the creation call's own
+direct return value (`SafeBookingResult`), never a "reference alone grants
+access" read path — exactly as this phase's own brief requires.
+
+### What is deliberately NOT built
+
+Payment (gateway, webhooks, confirmation), booking admin/management UI,
+email/WhatsApp/SMS notifications, a traveller booking-history view
+(`/dashboard/bookings`), account deletion, and any change to
+`bookings`/`booking_participants`/`payments` RLS beyond the one traveller
+select policy above. All remain explicitly future work.

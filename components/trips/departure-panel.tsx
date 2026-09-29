@@ -36,14 +36,23 @@ import type { TripDetail } from '@/lib/content/types';
  * enough today, and this comment is the place to revisit that decision
  * once a real booking flow needs the selection to survive navigation.
  *
- * Still no checkout, no booking form — "Booking opens soon" stays exactly
- * as honest as it always was, just now naming the departure it refers to.
+ * The "Book this departure" CTA (Phase 4.6) links to `/booking/[selected.id]`
+ * — the exact `trip_departure_id` currently selected, never the trip slug
+ * or an array position, so the departure identity survives the navigation
+ * into the booking flow intact (that route re-validates it authoritatively
+ * again regardless — this link is a convenience, not the security
+ * boundary). Only enabled when the selected departure's own status is
+ * actually bookable (`open`/`almost-full`) — a sold-out or waitlisted
+ * departure still shows its real state honestly instead of a live link
+ * that would only fail server-side.
  */
 export function TripDeparturePanel({ trip }: { trip: TripDetail }) {
   const options = getDepartureOptions(trip);
   const [selectedId, setSelectedId] = useState(options[0]!.id);
   const selected = options.find((option) => option.id === selectedId) ?? options[0]!;
   const groupName = useId();
+  const isBookable =
+    selected.availability.status === 'open' || selected.availability.status === 'almost-full';
 
   return (
     <section aria-label="Trip details" style={{ paddingBlock: 'var(--space-6)' }}>
@@ -122,15 +131,22 @@ export function TripDeparturePanel({ trip }: { trip: TripDetail }) {
                 Ready to go?
               </Text>
               <Text variant="small" tone="secondary">
-                {`Not yet bookable for the ${formatTripDate(
-                  selected.departureDate,
-                )} departure — see docs/ROADMAP.md Phase 6.`}
+                {isBookable
+                  ? `Reserve your spot on the ${formatTripDate(selected.departureDate)} departure — payment is a later step.`
+                  : `The ${formatTripDate(selected.departureDate)} departure is ${formatAvailability(
+                      selected.availability.status,
+                      selected.availability.spotsLeft,
+                    ).toLowerCase()} right now.`}
               </Text>
             </Stack>
             <div className="flex flex-wrap items-center" style={{ gap: 'var(--space-3)' }}>
-              <Button disabled title="Booking opens once the payments milestone ships">
-                Booking opens soon
-              </Button>
+              {isBookable ? (
+                <LinkButton href={`/booking/${selected.id}`}>Book this departure</LinkButton>
+              ) : (
+                <Button disabled title="This departure is not currently bookable">
+                  Not currently bookable
+                </Button>
+              )}
               <LinkButton href="/trips" variant="secondary">
                 ← All trips
               </LinkButton>

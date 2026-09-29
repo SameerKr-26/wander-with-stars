@@ -33,13 +33,23 @@ export type BookingContactInput = z.infer<typeof bookingContactInputSchema>;
  * (`.refine`), not only left as the "application-layer invariant" the
  * migration's own comment on `bookings.participant_count` documents as
  * unenforceable cross-table in a single CHECK constraint.
+ *
+ * `idempotencyKey` (Phase 4.6) — a client-generated UUID, one per
+ * booking-review session (`components/booking/booking-wizard.tsx` creates
+ * it once via `crypto.randomUUID()` and resends the same value on every
+ * retry of the same submission). Required, not optional: a booking
+ * created without one can never be deduplicated if the client's own
+ * retry logic needs to replay it, and the wizard always has one available
+ * by the time it can submit at all.
  */
 export const bookingCreateInputSchema = bookingContactInputSchema
   .extend({
     tripDepartureId: z.uuid('A valid departure is required'),
+    idempotencyKey: z.uuid('A valid idempotency key is required'),
     participants: z
       .array(bookingParticipantInputSchema)
-      .min(1, 'At least one participant is required'),
+      .min(1, 'At least one participant is required')
+      .max(20, 'At most 20 participants may be booked at once'),
   })
   .refine((v) => v.participants.filter((p) => p.isLead).length <= 1, {
     message: 'At most one participant may be marked as lead',

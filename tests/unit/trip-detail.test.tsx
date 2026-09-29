@@ -69,9 +69,9 @@ describe('hero / arrival', () => {
   });
 
   it('shows departure, duration, price and availability metadata', async () => {
-    // Phase 4.4C: TripDeparturePanel's own CTA copy also mentions the
-    // departure date ("Not yet bookable for the 14 Nov 2026 departure...")
-    // — getAllByText, not getByText, since the date now genuinely appears
+    // TripDeparturePanel's own CTA copy also mentions the departure date
+    // ("Reserve your spot on the 14 Nov 2026 departure...", Phase 4.6) —
+    // getAllByText, not getByText, since the date now genuinely appears
     // twice on the page for a single-departure trip.
     const ui = await TripDetailPage({ params: Promise.resolve({ slug: KNOWN_SLUG }) });
     render(ui);
@@ -198,15 +198,17 @@ describe('gallery / media', () => {
 });
 
 describe('booking state', () => {
-  it('shows the honest "booking opens soon" state — never a fake checkout', async () => {
+  it("shows a real, honest booking CTA — never a fake checkout — matching the departure's actual availability", async () => {
     // Phase 4.4C: the hero's old standalone metadata block and the closing
     // CTA merged into one TripDeparturePanel (so both a selected departure's
-    // metadata and its booking state always agree) — one button, not two.
+    // metadata and its booking state always agree). Phase 4.6: booking is
+    // real now — this fixture trip's departure is `open`, so the CTA is a
+    // genuine link to /booking/[id], not a disabled placeholder button.
     const ui = await TripDetailPage({ params: Promise.resolve({ slug: KNOWN_SLUG }) });
     render(ui);
 
-    const button = screen.getByRole('button', { name: 'Booking opens soon' });
-    expect(button).toBeDisabled();
+    const link = screen.getByRole('link', { name: 'Book this departure' });
+    expect(link).toHaveAttribute('href', expect.stringMatching(/^\/booking\/.+/));
   });
 
   it('the closing CTA returns to /trips', async () => {
@@ -242,10 +244,16 @@ describe('no nested interactive elements', () => {
     const ui = await TripDetailPage({ params: Promise.resolve({ slug: KNOWN_SLUG }) });
     render(ui);
 
+    // queryAllByRole, not getAllByRole: Phase 4.6's "Book this departure"
+    // CTA is a real link (LinkButton), not a disabled <Button>, for any
+    // trip whose departure is actually bookable — so this fixture trip can
+    // legitimately have zero button-role elements on the page now. The
+    // invariant under test (no nesting either direction) still holds
+    // either way.
     for (const link of screen.getAllByRole('link')) {
       expect(within(link).queryAllByRole('button')).toHaveLength(0);
     }
-    for (const button of screen.getAllByRole('button')) {
+    for (const button of screen.queryAllByRole('button')) {
       expect(within(button).queryAllByRole('link')).toHaveLength(0);
     }
   });

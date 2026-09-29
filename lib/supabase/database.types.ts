@@ -68,7 +68,9 @@ export type Database = {
           contact_name: string
           contact_phone: string | null
           created_at: string
+          expires_at: string | null
           id: string
+          idempotency_key: string | null
           participant_count: number
           reference: string
           snapshot_departure_date: string
@@ -88,7 +90,9 @@ export type Database = {
           contact_name: string
           contact_phone?: string | null
           created_at?: string
+          expires_at?: string | null
           id?: string
+          idempotency_key?: string | null
           participant_count: number
           reference: string
           snapshot_departure_date: string
@@ -108,7 +112,9 @@ export type Database = {
           contact_name?: string
           contact_phone?: string | null
           created_at?: string
+          expires_at?: string | null
           id?: string
+          idempotency_key?: string | null
           participant_count?: number
           reference?: string
           snapshot_departure_date?: string
@@ -860,8 +866,48 @@ export type Database = {
         Args: { p_departure_id: string; p_seats: number }
         Returns: undefined
       }
+      create_pending_booking: {
+        Args: {
+          p_contact_email: string
+          p_contact_name: string
+          p_contact_phone: string
+          p_idempotency_key: string
+          p_participants: Json
+          p_traveller_id: string
+          p_trip_departure_id: string
+        }
+        Returns: {
+          contact_email: string
+          contact_name: string
+          contact_phone: string | null
+          created_at: string
+          expires_at: string | null
+          id: string
+          idempotency_key: string | null
+          participant_count: number
+          reference: string
+          snapshot_departure_date: string
+          snapshot_destination: string
+          snapshot_price_amount: number
+          snapshot_price_currency: string
+          snapshot_return_date: string | null
+          snapshot_trip_slug: string
+          snapshot_trip_title: string
+          status: string
+          traveller_id: string | null
+          trip_departure_id: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "bookings"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       current_admin_role: { Args: never; Returns: string }
       generate_booking_reference: { Args: never; Returns: string }
+      release_expired_booking_holds: { Args: never; Returns: number }
       trip_departure_is_visible: {
         Args: { p_departure_id: string }
         Returns: boolean

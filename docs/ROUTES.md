@@ -6,6 +6,9 @@
 /
 /trips
 /trips/[slug]
+/booking/[departureId]  implemented, Phase 4.6 — not in the original sketch
+                        above; keyed by trip_departure_id, not a trip slug
+                        (see docs/ARCHITECTURE.md §19 for why)
 /explore
 /community
 /stories

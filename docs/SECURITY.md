@@ -93,6 +93,36 @@ the browser/server session-aware clients only
 (`lib/supabase/client.ts`/`server.ts`) — no service-role client appears
 anywhere in `lib/traveller/` or `app/(account)/`, `app/dashboard/`.
 
+**Implemented (Phase 4.6)** — the traveller booking & reservation flow: the
+account page the Phase 4.5 note above was waiting on now exists
+(`/booking/[departureId]`), so exactly the read policy that note deferred
+is added — `auth.uid() = bookings.traveller_id`, `select` only, nothing
+broader. Booking CREATION still never touches RLS at all: `bookings`/
+`booking_participants` still have zero `anon`/`authenticated` INSERT
+policy, so every booking write goes through `lib/booking/repository.ts`'s
+service-role client, calling the one new Postgres function,
+`create_pending_booking()` — exactly Phase 4.4's own prescribed pattern,
+now with a real caller. That function is also where server-side pricing
+authority actually lives: it reads `trip_departures.price_amount`/
+`price_currency` and every other commercial fact itself, at the moment of
+insertion — the client never submits a price, and
+`bookingCreateInputSchema` (`lib/booking/validation.ts`) has no price
+field for it to submit even if it tried. `traveller_id` is derived from
+`getTravellerSession()` server-side inside the one Server Action that
+calls this (`app/booking/[departureId]/actions.ts`) — never accepted as a
+client-submitted field (the input schema has no `travellerId` key at
+all). Guest confirmation is shown from that Server Action's own direct
+return value, never a subsequent read by reference — see
+docs/DATABASE.md §14's Phase 4.6 entry and docs/ARCHITECTURE.md §19 for
+the full reasoning, and `tests/integration/booking-flow.test.ts` for the
+tests verifying cross-user booking-read rejection, anonymous
+booking-read rejection, and participant-privacy rejection.
+
+Duplicate-submission safety: a client-generated `idempotency_key`, one per
+booking-review session, lets `create_pending_booking()` recognise and
+safely replay (not duplicate) a retried submission — see
+docs/DATABASE.md §4's Phase 4.6 entry for the full mechanism.
+
 ## 5. RLS
 
 For every protected table answer:

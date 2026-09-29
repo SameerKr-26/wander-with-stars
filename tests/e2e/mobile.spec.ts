@@ -99,10 +99,13 @@ test.describe('trip detail page — mobile viewport', () => {
     expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1);
   });
 
-  test('the honest booking state is visible without hovering', async ({ page }) => {
+  test('the real booking CTA is visible without hovering', async ({ page }) => {
+    // Phase 4.6: booking is real now — this fixture trip's departure is
+    // `open`, so the CTA is a genuine link to /booking/[id], not the old
+    // disabled "Booking opens soon" placeholder.
     await page.goto(`/trips/${SLUG}`);
 
-    await expect(page.getByRole('button', { name: 'Booking opens soon' }).first()).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Book this departure' }).first()).toBeVisible();
   });
 
   test('the return-to-/trips link works', async ({ page }) => {

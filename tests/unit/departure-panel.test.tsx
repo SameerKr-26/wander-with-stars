@@ -98,10 +98,16 @@ describe('TripDeparturePanel — multiple departures (Phase 4.4C)', () => {
     expect(decRadio).toBeChecked();
     // Price/date metadata now reflects the December departure, not October's.
     expect(screen.getAllByText(/64,999/).length).toBeGreaterThan(0);
-    expect(screen.getByText(/Not yet bookable for the 22 Dec 2026 departure/)).toBeInTheDocument();
-    // The October price is gone from the metadata/CTA area now that Dec is selected.
+    // Phase 4.6: the CTA is a real "Book this departure" link, pointing at
+    // the currently-selected departure's own id — not the static "Not yet
+    // bookable" placeholder copy Phase 4.4C shipped before booking existed.
+    expect(screen.getByText(/Reserve your spot on the 22 Dec 2026 departure/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Book this departure' })).toHaveAttribute(
+      'href',
+      '/booking/dep-dec',
+    );
     expect(
-      screen.queryByText(/Not yet bookable for the 25 Oct 2026 departure/),
+      screen.queryByText(/Reserve your spot on the 25 Oct 2026 departure/),
     ).not.toBeInTheDocument();
   });
 
