@@ -123,6 +123,32 @@ booking-review session, lets `create_pending_booking()` recognise and
 safely replay (not duplicate) a retried submission — see
 docs/DATABASE.md §4's Phase 4.6 entry for the full mechanism.
 
+**Implemented (Phase 4.7)** — payment integration (Razorpay): `payments`
+still has zero `anon`/`authenticated` RLS policies — every write goes
+through the service-role client (`lib/payments/repository.ts`, the webhook
+route), after this phase's own trust boundary, never RLS. Razorpay's
+secret key and webhook secret (`RAZORPAY_KEY_SECRET`,
+`RAZORPAY_WEBHOOK_SECRET`) are read only by `lib/payments/env.ts`
+(`import 'server-only'`, lazily validated so the rest of the app/test suite
+never requires them to run) and never serialised into any Server Action
+response or client bundle — the browser receives only a Razorpay order ID
+and the public `RAZORPAY_KEY_ID`, the minimum Razorpay Checkout itself
+requires to open. No card number, CVV, UPI credential or payment token is
+ever received, transmitted, or stored by this codebase; Razorpay Checkout
+collects all of that directly on Razorpay's own hosted surface. The
+browser's own "payment succeeded" signal (Checkout's `handler` callback,
+any query parameter, any client-side state) is never trusted on its own —
+`verifyAndRecordPayment()` (`lib/payments/repository.ts`) independently
+re-verifies the Checkout success signature AND re-fetches the payment from
+Razorpay's own API before recording anything, and the webhook
+(`app/api/webhooks/razorpay/route.ts`) is the fully independent,
+server-to-server confirmation path that does not depend on the browser
+having stayed open at all. See docs/ARCHITECTURE.md §20 for the full flow
+and docs/DATABASE.md §4's Phase 4.7 entry for `record_payment_result()`'s
+idempotency/amount-verification guarantees, and
+`tests/integration/payment-flow.test.ts` /
+`tests/e2e-db/webhook.spec.ts` for the tests verifying them.
+
 ## 5. RLS
 
 For every protected table answer:
@@ -153,9 +179,48 @@ Client
 
 Use idempotency keys to tolerate retries.
 
+**Implemented (Phase 4.7, Razorpay):** this sequence is real. The order
+amount is computed server-side from the booking's own commercial snapshot
+(`participant_count x snapshot_price_amount` — fixed at booking creation,
+Phase 4.6), never accepted from the browser; `createPaymentOrderAction`
+has no amount field in its input schema for a client to submit one even if
+it tried. A reported amount/currency mismatch at confirmation time is
+rejected by `record_payment_result()` without confirming the booking.
+Idempotency uses two mechanisms, not a single ad-hoc key: order creation
+reuses an existing pending payment row for the same booking rather than
+creating a duplicate Razorpay order, and confirmation uses an
+"already-resolved -> no-op" status guard (see docs/DATABASE.md §4) rather
+than a client-supplied idempotency key, since both the webhook and the
+checkout-return path need the same guarantee and neither originates from
+the browser alone.
+
 ## 7. Webhooks
 
 Validate signature/authentication, reject invalid payloads, log safely, and make processing idempotent.
+
+**Implemented (Phase 4.7, Razorpay):** `app/api/webhooks/razorpay/route.ts`
+reads the raw request body first (required for HMAC verification — a
+parsed-then-restringified body would not reproduce Razorpay's original
+bytes), verifies it against `RAZORPAY_WEBHOOK_SECRET` using
+`crypto.timingSafeEqual` (never a plain `===` string comparison, to avoid
+timing-attack signature leakage, and only after confirming equal buffer
+length, which `timingSafeEqual` itself requires), and returns 400 for a
+missing/invalid signature or a malformed/schema-invalid payload before any
+database access. A payload that is well-formed but refers to an unknown
+payment, or whose status the project doesn't need to act on, still returns
+200 — Razorpay retries non-2xx responses, and an event this endpoint
+genuinely cannot or need not act on should not trigger endless retries.
+Duplicate and out-of-order deliveries are handled by
+`record_payment_result()`'s own idempotency guard (§6 above), not by the
+webhook route tracking delivery IDs itself. No internal error detail is
+ever returned in the response body. Local testing: no real Razorpay
+sandbox account exists in this development environment; the signature
+verification and route logic are tested directly
+(`tests/e2e-db/webhook.spec.ts`, self-signed payloads against a fixed test
+secret — Razorpay's own documented approach to testing a webhook handler
+offline) — see docs/ARCHITECTURE.md §20's "Local sandbox testing" for the
+full, honest account of what is and isn't verified against a live
+sandbox.
 
 ## 8. File security
 

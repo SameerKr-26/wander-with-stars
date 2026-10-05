@@ -4,9 +4,12 @@ import { useState } from 'react';
 
 import { submitBookingAction } from '@/app/booking/[departureId]/actions';
 import { Button, Field, GlassPanel, Input, Section, Select, Stack, Text } from '@/components/ui';
-import type { BookableDepartureSummary } from '@/lib/booking/repository';
+import type { BookableDepartureSummary, SafeBookingResult } from '@/lib/booking/repository';
 import { formatBookingDate, formatBookingPrice } from '@/lib/booking/format';
 import { formatDuration } from '@/lib/content/format';
+
+import { PaymentStep } from './payment-step';
+import { ReviewRow } from './review-row';
 
 /**
  * BookingWizard — Phase 4.6.
@@ -33,7 +36,7 @@ import { formatDuration } from '@/lib/content/format';
  * deliberately unlike the public trip pages this flow is entered from.
  */
 
-type Step = 'contact' | 'participants' | 'review' | 'result';
+type Step = 'contact' | 'participants' | 'review' | 'payment' | 'result';
 
 interface ContactState {
   contactName: string;
@@ -58,9 +61,8 @@ export function BookingWizard({ departureId, summary }: BookingWizardProps) {
   const [participantNames, setParticipantNames] = useState<string[]>(['']);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [result, setResult] = useState<Awaited<ReturnType<typeof submitBookingAction>> | null>(
-    null,
-  );
+  const [booking, setBooking] = useState<SafeBookingResult | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
   // One idempotency key per review session, generated once and reused on
   // every retry of the same submission — see lib/booking/validation.ts's
   // own comment for the full contract (scope: this one booking attempt;
@@ -99,11 +101,16 @@ export function BookingWizard({ departureId, summary }: BookingWizardProps) {
     });
 
     setSubmitting(false);
-    if (!outcome.ok) {
+    if (!outcome.ok || !outcome.booking) {
       setSubmitError(outcome.errorMessage ?? 'Something went wrong. Please try again.');
       return;
     }
-    setResult(outcome);
+    setBooking(outcome.booking);
+    setStep('payment');
+  }
+
+  function handlePaymentConfirmed(status: string) {
+    setPaymentStatus(status);
     setStep('result');
   }
 
@@ -147,7 +154,20 @@ export function BookingWizard({ departureId, summary }: BookingWizardProps) {
             />
           ) : null}
 
-          {step === 'result' && result ? <ResultStep result={result} /> : null}
+          {step === 'payment' && booking ? (
+            <PaymentStep
+              booking={booking}
+              contactName={contact.contactName}
+              contactEmail={contact.contactEmail}
+              contactPhone={contact.contactPhone}
+              onConfirmed={handlePaymentConfirmed}
+              onBack={() => setStep('review')}
+            />
+          ) : null}
+
+          {step === 'result' && booking ? (
+            <ResultStep booking={booking} paymentStatus={paymentStatus} />
+          ) : null}
         </Stack>
       </div>
     </Section>
@@ -369,43 +389,24 @@ function ReviewStep({
   );
 }
 
-function ReviewRow({
-  label,
-  value,
-  emphasis,
+/**
+ * Reached only via `handlePaymentConfirmed` — i.e. only after
+ * `verifyPaymentAction` (or the webhook, whichever won) actually reported
+ * `bookingStatus === 'confirmed'`. `PaymentStep` owns every non-confirmed
+ * outcome (verification pending, cancelled, failed) itself, with its own
+ * retry affordances — this step never claims "confirmed" on anything less
+ * than a real, server-verified payment result (this phase's own explicit
+ * "do not claim confirmation before the backend has verified payment"
+ * rule).
+ */
+function ResultStep({
+  booking,
+  paymentStatus,
 }: {
-  label: string;
-  value: string;
-  emphasis?: boolean;
+  booking: SafeBookingResult;
+  paymentStatus: string | null;
 }) {
-  return (
-    <div className="flex items-baseline justify-between" style={{ gap: 'var(--space-4)' }}>
-      <Text variant="small" tone="muted">
-        {label}
-      </Text>
-      <Text
-        style={{
-          fontWeight: emphasis ? 'var(--weight-heading)' : 'var(--weight-subheading)',
-          fontSize: emphasis ? 'var(--text-lg)' : undefined,
-          textAlign: 'right',
-        }}
-      >
-        {value}
-      </Text>
-    </div>
-  );
-}
-
-function ResultStep({ result }: { result: Awaited<ReturnType<typeof submitBookingAction>> }) {
-  if (!result.ok || !result.booking) {
-    return (
-      <GlassPanel variant="tinted" radius="panel" style={{ padding: 'var(--space-6)' }}>
-        <Text role="alert">{result.errorMessage}</Text>
-      </GlassPanel>
-    );
-  }
-
-  const { booking } = result;
+  const total = booking.snapshotPriceAmount * booking.participantCount;
   return (
     <GlassPanel variant="tinted" radius="panel" style={{ padding: 'var(--space-6)' }}>
       <Stack gap={4}>
@@ -425,14 +426,19 @@ function ResultStep({ result }: { result: Awaited<ReturnType<typeof submitBookin
           <ReviewRow label="Departs" value={formatBookingDate(booking.snapshotDepartureDate)} />
           <ReviewRow label="Travellers" value={String(booking.participantCount)} />
           <ReviewRow
-            label="Status"
-            value={booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-            emphasis
+            label="Amount paid"
+            value={formatBookingPrice(total, booking.snapshotPriceCurrency)}
           />
+          <ReviewRow
+            label="Payment status"
+            value={
+              paymentStatus ? paymentStatus.charAt(0).toUpperCase() + paymentStatus.slice(1) : '—'
+            }
+          />
+          <ReviewRow label="Booking status" value="Confirmed" emphasis />
         </Stack>
         <Text variant="small" tone="secondary">
-          Your spot is reserved and pending. This is not yet a confirmed booking — payment and final
-          confirmation are a separate, later step. We&apos;ll be in touch about what happens next.
+          Your booking is confirmed. We&apos;ll be in touch with what happens next.
         </Text>
       </Stack>
     </GlassPanel>

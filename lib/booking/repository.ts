@@ -110,6 +110,13 @@ export type BookingCreationErrorCode =
   | 'UNKNOWN';
 
 export interface SafeBookingResult {
+  /**
+   * Phase 4.7: needed internally so the payment step can call
+   * `createPaymentOrderAction({ bookingId: id })` — `reference` remains
+   * the only customer-FACING identifier (shown in the UI); `id` is never
+   * displayed, only used to drive the payment API calls that follow.
+   */
+  id: string;
   reference: string;
   status: string;
   participantCount: number;
@@ -186,6 +193,7 @@ export async function createPendingBooking(
   }
 
   const row = data as {
+    id: string;
     reference: string;
     status: string;
     participant_count: number;
@@ -202,6 +210,7 @@ export async function createPendingBooking(
   return {
     ok: true,
     booking: {
+      id: row.id,
       reference: row.reference,
       status: row.status,
       participantCount: row.participant_count,

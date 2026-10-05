@@ -327,15 +327,42 @@ birth or medical information; none has an established requirement yet
 (docs/SECURITY.md "collect only information needed").
 
 ### payments
-Fields: `id`, `booking_id`, `provider` (free text — no gateway hardcoded),
-`provider_reference` (nullable, unique per provider via a partial index —
-see "Webhook idempotency" below), `amount`, `currency`, `status` (`pending
-| succeeded | failed | refunded` — separate from `bookings.status`
-entirely), `captured_at` (nullable), `created_at`, `updated_at`. Dropped
-`payment_method` and `metadata` (no gateway integration exists yet to
-populate either meaningfully) and `idempotency_key` (the `(provider,
-provider_reference)` partial unique index already serves that purpose —
-see below — without a second, parallel key to keep in sync with it).
+Fields: `id`, `booking_id` (Phase 4.7: `on delete cascade` — see "FK fix"
+below), `provider` (free text — no gateway hardcoded, `'razorpay'` as of
+Phase 4.7), `provider_reference` (nullable, unique per provider via a
+partial index — set at order-creation time to Razorpay's `order.id` — see
+"Webhook idempotency" below), `provider_payment_id` (Phase 4.7, nullable,
+unique per provider via a second partial index — set only once a payment
+actually completes, to Razorpay's `payment.id`; a genuinely distinct value
+from `provider_reference`, since Razorpay's own order/payment lifecycle has
+two separate identifiers), `amount`, `currency`, `status` (`pending |
+succeeded | failed | refunded` — separate from `bookings.status`
+entirely), `failure_reason` (Phase 4.7, nullable text — the provider's own
+failure description, recorded only on a failed payment, never containing
+card/bank/UPI data), `captured_at` (nullable), `created_at`, `updated_at`.
+Dropped `payment_method` and `metadata` (no gateway integration existed yet
+at the time to populate either meaningfully) and `idempotency_key` (the
+`(provider, provider_reference)` partial unique index already serves that
+purpose — see below — without a second, parallel key to keep in sync with
+it).
+
+**FK fix (Phase 4.7):** the original `payments_booking_id_fkey` had no
+`on delete` behaviour (unlike `booking_participants.booking_id`, which
+already cascaded) — a latent Phase 4.4 gap that only surfaced once real
+payment rows existed: deleting a booking with a payment failed with a
+foreign-key violation, leaving its seat counters stuck. Fixed by dropping
+and re-adding the constraint with `on delete cascade`.
+
+**`record_payment_result()` (Phase 4.7):** the one, shared, idempotent
+entry point both the webhook handler and the checkout-return verification
+path call to record a payment outcome. Locks the payment row by `(provider,
+provider_order_id)`, no-ops if the row is already resolved (not `pending`
+— the single guard that makes duplicate/retried/out-of-order provider
+events safe), rejects if the reported amount/currency doesn't match what
+the row itself recorded at creation, and — only if the booking is still
+`pending` — transitions it to `confirmed` on success, reusing the existing
+`bookings_before_update` trigger rather than any new seat-accounting
+code. See `docs/ARCHITECTURE.md` §20 for the full flow.
 
 ### Booking reference
 Customer-facing, never the internal UUID —
@@ -387,21 +414,29 @@ doesn't have one yet.
 ### Payment lifecycle
 `pending -> succeeded | failed`, and `succeeded -> refunded` once a future
 refund flow exists (not built this phase — no refund business rules have
-been supplied, and none are invented here). Entirely independent of
-`bookings.status`: a booking can exist while payment is pending, and a
-booking is never auto-confirmed merely because a payment row exists —
-confirming a booking is a deliberate, separate write.
+been supplied, and none are invented here; see `docs/ARCHITECTURE.md` §20
+"Refunds — explicitly deferred"). Entirely independent of `bookings.status`:
+a booking can exist while payment is pending, and a booking is never
+auto-confirmed merely because a payment row exists — confirming a booking
+is a deliberate, separate write performed only by `record_payment_result()`
+after independent provider verification (Phase 4.7).
 
 ### Webhook idempotency
-Not implemented this phase (no webhook handler exists), but the schema is
-ready for it: `payments_provider_reference_unique`, a partial unique index
-on `(provider, provider_reference) where provider_reference is not null`.
-A future webhook handler can `insert` each delivered event's payment
-attempt directly and let the index itself reject a duplicate/retried
-delivery, rather than a hand-rolled "have I seen this event" check —
-multiple providers may reuse the same reference string independently
-(verified by an integration test), and multiple payment attempts that
-never got a provider reference at all don't collide with each other.
+Implemented Phase 4.7 (`app/api/webhooks/razorpay/route.ts`): the schema's
+two partial unique indexes are the entire uniqueness mechanism — no
+separate webhook-events ledger table. `payments_provider_reference_unique`
+on `(provider, provider_reference) where provider_reference is not null`
+(order-creation time) and `payments_provider_payment_id_unique` (Phase
+4.7) on `(provider, provider_payment_id) where provider_payment_id is not
+null` (payment-completion time) — kept as two separate columns/indexes
+rather than one, since Razorpay's order and payment identifiers are
+genuinely different values with different lifetimes. A duplicate or
+retried webhook delivery, or the checkout-return path and the webhook
+racing each other for the same payment, both resolve through
+`record_payment_result()`'s own "already resolved -> no-op" guard (see
+above) rather than relying on the indexes to reject a second insert —
+every delivery is an `update` against the existing row, never a second
+`insert`.
 
 ### Concurrency
 `bookings_reserve_seats` is one `UPDATE ... WHERE ... RETURNING`-shaped

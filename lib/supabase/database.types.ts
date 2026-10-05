@@ -256,8 +256,10 @@ export type Database = {
           captured_at: string | null
           created_at: string
           currency: string
+          failure_reason: string | null
           id: string
           provider: string
+          provider_payment_id: string | null
           provider_reference: string | null
           status: string
           updated_at: string
@@ -268,8 +270,10 @@ export type Database = {
           captured_at?: string | null
           created_at?: string
           currency: string
+          failure_reason?: string | null
           id?: string
           provider: string
+          provider_payment_id?: string | null
           provider_reference?: string | null
           status?: string
           updated_at?: string
@@ -280,8 +284,10 @@ export type Database = {
           captured_at?: string | null
           created_at?: string
           currency?: string
+          failure_reason?: string | null
           id?: string
           provider?: string
+          provider_payment_id?: string | null
           provider_reference?: string | null
           status?: string
           updated_at?: string
@@ -907,6 +913,37 @@ export type Database = {
       }
       current_admin_role: { Args: never; Returns: string }
       generate_booking_reference: { Args: never; Returns: string }
+      record_payment_result: {
+        Args: {
+          p_failure_reason: string
+          p_provider: string
+          p_provider_order_id: string
+          p_provider_payment_id: string
+          p_reported_amount: number
+          p_reported_currency: string
+          p_status: string
+        }
+        Returns: {
+          amount: number
+          booking_id: string
+          captured_at: string | null
+          created_at: string
+          currency: string
+          failure_reason: string | null
+          id: string
+          provider: string
+          provider_payment_id: string | null
+          provider_reference: string | null
+          status: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "payments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       release_expired_booking_holds: { Args: never; Returns: number }
       trip_departure_is_visible: {
         Args: { p_departure_id: string }

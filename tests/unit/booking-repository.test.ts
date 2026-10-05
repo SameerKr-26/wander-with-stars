@@ -139,6 +139,7 @@ describe('createPendingBooking', () => {
   it('maps a successful RPC result to a safe booking result', async () => {
     rpc.mockResolvedValue({
       data: {
+        id: '33333333-3333-4333-8333-333333333333',
         reference: 'WWS-ABCDEFGH',
         status: 'pending',
         participant_count: 1,
@@ -159,6 +160,7 @@ describe('createPendingBooking', () => {
 
     expect(result.ok).toBe(true);
     if (result.ok) {
+      expect(result.booking.id).toBe('33333333-3333-4333-8333-333333333333');
       expect(result.booking.reference).toBe('WWS-ABCDEFGH');
       expect(result.booking.status).toBe('pending');
       expect(result.booking.participantCount).toBe(1);

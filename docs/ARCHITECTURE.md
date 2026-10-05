@@ -1141,3 +1141,188 @@ email/WhatsApp/SMS notifications, a traveller booking-history view
 (`/dashboard/bookings`), account deletion, and any change to
 `bookings`/`booking_participants`/`payments` RLS beyond the one traveller
 select policy above. All remain explicitly future work.
+
+## 20. Payment integration & booking confirmation (Phase 4.7)
+
+Connects Phase 4.6's pending-booking system to Razorpay (the explicitly
+selected provider for this phase). Payment success is NEVER inferred from
+the browser: the webhook is the authoritative confirmation path, and the
+checkout-return "fast path" independently re-verifies with Razorpay's own
+API before trusting anything — both converge on one idempotent database
+function, so whichever resolves first is authoritative.
+
+### Architecture
+
+```
+components/booking/payment-step.tsx (client)
+        |  createPaymentOrderAction({ bookingId })
+        v
+app/booking/[departureId]/payment-actions.ts
+        v
+lib/payments/repository.ts   createPaymentOrder()
+        |  reads booking.participant_count x snapshot_price_amount --
+        |  the ONLY place an order amount is decided, never a client value
+        v
+lib/payments/razorpay.ts     createRazorpayOrder()  (plain fetch, Basic Auth)
+        v
+Razorpay Orders API  ->  order.id
+        v
+payments row inserted: provider='razorpay', provider_reference=order.id,
+                        status='pending', amount/currency from the booking
+
+---- traveller completes Razorpay Checkout (a modal, not a redirect) ----
+
+TWO independent paths can report success, converging on the same function:
+
+  A. Checkout's own handler callback (client)
+        -> verifyPaymentAction -> lib/payments/repository.ts's
+           verifyAndRecordPayment(): verifies Checkout's own HMAC
+           signature, then independently re-fetches the payment from
+           Razorpay's Payments API (never trusts the callback alone)
+        -> record_payment_result()
+
+  B. app/api/webhooks/razorpay/route.ts (server, no browser involved)
+        -> verifies the webhook's OWN HMAC signature
+           (lib/payments/webhook.ts, a DIFFERENT secret/scheme than A's
+           Checkout signature)
+        -> record_payment_result()
+
+record_payment_result() (supabase/migrations/20260929182853_*.sql):
+  - locks the payment row by (provider, provider_order_id)
+  - already resolved (not pending)? -> no-op, return as-is (handles
+    duplicate webhooks, retries, and out-of-order events uniformly)
+  - reported amount/currency != what THIS ROW recorded at creation? ->
+    reject, change nothing (the row's own amount is itself derived from
+    the booking snapshot, never re-read from "current" pricing)
+  - else: update payment status, and ONLY IF the booking is still
+    pending, transition it to confirmed (reusing Phase 4.4's existing
+    bookings_before_update trigger, which already confirms seats and
+    clears expires_at -- no new seat-accounting logic needed)
+```
+
+### Provider status mapping
+
+`lib/payments/status.ts` is the ONE place a Razorpay-specific status
+string (`created`/`authorized`/`captured`/`failed`/`refunded`) is ever
+read -- translated immediately to this project's own
+`pending | succeeded | failed | refunded` (`lib/booking/schema.ts`,
+unchanged since Phase 4.4). No other module in this codebase ever compares
+against a raw Razorpay string.
+
+### Amount/currency authority
+
+The server derives the payable amount from `participant_count x
+snapshot_price_amount` -- fields fixed at booking-creation time (Phase
+4.6), immune to a later trip/price edit. `lib/payments/amount.ts`'s
+`toProviderSubunits`/`fromProviderSubunits` is the one, pure, two-way
+conversion between that decimal rupee amount and Razorpay's required
+integer-paise representation -- no currency conversion or exchange-rate
+logic exists anywhere (every booking today is INR; out of scope
+regardless).
+
+### Idempotency
+
+Two independent mechanisms, at two different layers:
+
+- **Order creation** (`createPaymentOrder`): reuses an existing still-
+  pending payment row for the same booking rather than creating a second
+  Razorpay order on every retry/double-click/re-render. A genuine
+  concurrent race (two simultaneous requests) is resolved by re-querying
+  after a unique-index conflict rather than erroring.
+- **Payment confirmation** (`record_payment_result`): the "already resolved
+  -> no-op" guard described above. A duplicate webhook delivery, a retried
+  delivery, and an out-of-order stale failed event arriving after a
+  genuine succeeded one are all the same case -- nothing left to do,
+  nothing ever double-applies, and a success is never downgraded.
+
+Deliberately NOT a general-purpose event-processing framework: no separate
+webhook-events ledger table, no distributed lock -- `payments`' own two
+partial-unique indexes (`(provider, provider_reference)`,
+`(provider, provider_payment_id)`, the second new this phase) are the
+entire uniqueness mechanism.
+
+### Pending-booking expiry interaction
+
+Phase 4.6's `expires_at`/`release_expired_booking_holds()` is unchanged.
+Documented, deliberate behaviour for the cases this phase's brief asks
+about explicitly:
+
+- **Booking expires while payment is still pending**: the next booking
+  attempt's `release_expired_booking_holds()` call (Phase 4.6) cancels it
+  and releases its seats, exactly as before -- nothing payment-specific
+  changes that.
+- **Payment succeeds AFTER the booking already expired/was cancelled**:
+  `record_payment_result` still records the payment as succeeded (the
+  money genuinely moved -- a true historical fact this table must not
+  hide) but does NOT reconfirm the booking, because its seats may already
+  have been released and possibly re-sold -- silently reconfirming would
+  risk overselling the departure. This is a real edge case this phase
+  resolves by leaving it for manual/support reconciliation, NOT an
+  automated refund (inventing a refund policy is explicitly out of scope).
+- **A payment attempt fails before expiry**: the booking stays pending,
+  untouched, free to retry (a fresh order, a fresh payment row) until its
+  own hold genuinely expires.
+
+### Local sandbox testing
+
+No real Razorpay sandbox account/credentials exist in this project's
+development environment. What this means concretely:
+
+- `lib/payments/razorpay.ts`'s actual HTTP calls to Razorpay's Orders/
+  Payments REST API are **not exercised** by any automated test in this
+  repository -- every test that touches `createPaymentOrder`/
+  `verifyAndRecordPayment` mocks that module
+  (`tests/unit/payment-repository.test.ts`). This is an honest, explicit
+  limitation, not something this phase claims to have verified end-to-end
+  against a live sandbox.
+- The webhook route IS fully, genuinely tested: `tests/e2e-db/webhook.spec.ts`
+  computes its own HMAC-SHA256 signature (the exact scheme Razorpay uses)
+  against a fixed test secret the dev server is started with, and POSTs
+  directly to `/api/webhooks/razorpay` -- this is Razorpay's own documented
+  approach to testing a webhook handler offline, requiring no tunnel, no
+  CLI, and no live account.
+- `record_payment_result()` -- the actual trusted confirmation logic this
+  phase's "critical principle" is about -- IS fully tested for real,
+  against the real local database (`tests/integration/payment-flow.test.ts`),
+  independent of whichever HTTP path (webhook or checkout-return) would
+  have called it in production.
+- **For genuine end-to-end verification against a real Razorpay sandbox**:
+  create a free Razorpay account, switch to Test Mode, copy the Test Key
+  ID/Secret into `.env.local` (see `.env.example`), create a webhook
+  (Dashboard -> Settings -> Webhooks) pointed at a locally-tunnelled URL
+  (e.g. `ngrok http 3000`, then `<ngrok-url>/api/webhooks/razorpay`) with
+  its own secret, and use Razorpay's documented test card numbers to
+  complete a real sandbox checkout. This is the standard Razorpay-
+  recommended local workflow (they do not offer a dedicated CLI/tunnel
+  product the way some other gateways do) -- not performed as part of this
+  phase, and not claimed to be.
+
+### Security / secrets
+
+`RAZORPAY_KEY_SECRET`/`RAZORPAY_WEBHOOK_SECRET` are server-only
+(`lib/payments/env.ts`, lazily validated -- see that file's own header for
+why it is deliberately NOT part of `lib/env/server.ts`'s eager, every-
+render validation). `RAZORPAY_KEY_ID` reaches the browser only via a
+server-computed Server Action response (`createPaymentOrderAction`), never
+a `NEXT_PUBLIC_*` environment variable -- the client never has standing
+access to it outside of an active checkout session. No card number, CVV,
+UPI credential, or payment token is ever received or stored by this
+project -- Razorpay Checkout collects all of that directly, on Razorpay's
+own hosted surface.
+
+### Refunds -- explicitly deferred
+
+No automated refund logic exists. `payments.status`'s `refunded` value is
+preserved as a future-compatible state (`lib/payments/status.ts` already
+maps Razorpay's own `refunded` payment status to it) but nothing in this
+phase ever writes it, and no WWS refund policy (eligibility, timing,
+partial vs. full) is invented here. A booking whose payment later needs
+refunding remains a manual operation until a real refund milestone defines
+that policy deliberately.
+
+### What is deliberately NOT built
+
+Invoices, coupons, instalments, subscriptions, any finance/admin
+dashboard, a booking-admin surface, a traveller payment-history view,
+notifications (email/WhatsApp/SMS) of any kind. All remain explicit future
+work.
