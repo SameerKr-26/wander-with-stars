@@ -131,3 +131,18 @@
   text-decoration-thickness: 2px;
   text-underline-offset: var(--space-2);
 }
+
+/* Account dropdown (Phase 4.8A) — same disclosure animation already
+   approved for the mobile nav panel above, not a new motion language. */
+.wws-account-panel {
+  animation: wws-menu-in var(--duration-standard) var(--ease-standard);
+}
+
+.wws-account-menu-item:hover {
+  background-color: var(--color-surface-sunk);
+}
+
+.wws-account-trigger:focus-visible {
+  outline: 2px solid var(--color-border-brand);
+  outline-offset: 2px;
+}

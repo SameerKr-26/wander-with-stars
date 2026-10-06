@@ -75,6 +75,13 @@ export interface NavItem {
  * tripDiscovery and points at /trips, so the CTA exists before the matcher
  * does. When tripMatcher ships it can change what happens behind this CTA —
  * a different destination or an interstitial — without a navigation redesign.
+ *
+ * No "Log in" entry here (Phase 4.8A): account access is owned entirely by
+ * `components/layout/account-menu.tsx`, rendered unconditionally in
+ * `SiteHeader` from the real server-resolved session — not gated on
+ * `IMPLEMENTED_ROUTES`/a feature flag the way this list's items are. It
+ * previously appeared here as a `'guest'`-audience item, but `/login` was
+ * never in `IMPLEMENTED_ROUTES`, so it had never actually rendered.
  */
 export const PRIMARY_NAV: readonly NavItem[] = [
   { label: 'Home', href: '/' },
@@ -83,7 +90,6 @@ export const PRIMARY_NAV: readonly NavItem[] = [
   { label: 'Creators', href: '/creators', feature: 'creators', matchNested: true },
   { label: 'Community', href: '/community', feature: 'community', matchNested: true },
   { label: 'About', href: '/about' },
-  { label: 'Log in', href: '/login', feature: 'travellerAccounts', audience: 'guest' },
   { label: 'Find My Trip', href: '/trips', feature: 'tripDiscovery', emphasis: 'primary' },
 ] as const;
 

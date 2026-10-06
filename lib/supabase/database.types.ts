@@ -304,23 +304,38 @@ export type Database = {
       }
       traveller_profiles: {
         Row: {
+          city: string | null
           created_at: string
+          dietary_preference: string | null
           display_name: string
           id: string
+          phone: string | null
+          travel_interests: string[]
+          travel_style: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          city?: string | null
           created_at?: string
+          dietary_preference?: string | null
           display_name: string
           id?: string
+          phone?: string | null
+          travel_interests?: string[]
+          travel_style?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          city?: string | null
           created_at?: string
+          dietary_preference?: string | null
           display_name?: string
           id?: string
+          phone?: string | null
+          travel_interests?: string[]
+          travel_style?: string | null
           updated_at?: string
           user_id?: string
         }

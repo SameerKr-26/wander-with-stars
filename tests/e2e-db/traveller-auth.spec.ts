@@ -1,7 +1,10 @@
 import { expect, test } from '@playwright/test';
 
+import { signUpViaUi } from './helpers/signup';
+
 /**
- * Traveller authentication — Phase 4.5.
+ * Traveller authentication — Phase 4.5, signup flow updated Phase 4.8A
+ * (now two real steps — see `./helpers/signup.ts`).
  *
  * Runs against `CONTENT_SOURCE=database` (playwright.db.config.ts) and the
  * real local Supabase Auth instance — a genuine signup/login/logout cycle,
@@ -36,28 +39,18 @@ test.describe('signup → dashboard → logout', () => {
     page,
   }) => {
     const email = uniqueEmail('signup');
-    await page.goto('/signup', { waitUntil: 'networkidle' });
-    await page.getByLabel('Display name').fill('E2E Traveller');
-    await page.getByLabel('Email').fill(email);
-    await page.getByLabel('Password').fill(PASSWORD);
-    await page.getByRole('button', { name: 'Create account' }).click();
+    await signUpViaUi(page, { displayName: 'E2E Traveller', email, password: PASSWORD });
 
-    await page.waitForURL('**/dashboard');
     await expect(page.getByRole('heading', { name: /Welcome back, E2E Traveller/ })).toBeVisible();
   });
 
   test('editing the profile updates the displayed name', async ({ page }) => {
     const email = uniqueEmail('edit');
-    await page.goto('/signup', { waitUntil: 'networkidle' });
-    await page.getByLabel('Display name').fill('Original Name');
-    await page.getByLabel('Email').fill(email);
-    await page.getByLabel('Password').fill(PASSWORD);
-    await page.getByRole('button', { name: 'Create account' }).click();
-    await page.waitForURL('**/dashboard');
+    await signUpViaUi(page, { displayName: 'Original Name', email, password: PASSWORD });
 
     await page.getByRole('link', { name: 'Profile', exact: true }).click();
     await page.waitForURL('**/dashboard/profile');
-    await page.getByLabel('Display name').fill('Renamed Traveller');
+    await page.getByLabel('Full name').fill('Renamed Traveller');
     await page.getByRole('button', { name: 'Save changes' }).click();
 
     await page.waitForTimeout(500);
@@ -69,12 +62,7 @@ test.describe('signup → dashboard → logout', () => {
 
   test('signing out ends the session and returns to login', async ({ page }) => {
     const email = uniqueEmail('logout');
-    await page.goto('/signup', { waitUntil: 'networkidle' });
-    await page.getByLabel('Display name').fill('Logout Tester');
-    await page.getByLabel('Email').fill(email);
-    await page.getByLabel('Password').fill(PASSWORD);
-    await page.getByRole('button', { name: 'Create account' }).click();
-    await page.waitForURL('**/dashboard');
+    await signUpViaUi(page, { displayName: 'Logout Tester', email, password: PASSWORD });
 
     await page.getByRole('button', { name: 'Sign out' }).click();
     await page.waitForURL('**/login');
@@ -85,12 +73,7 @@ test.describe('signup → dashboard → logout', () => {
 test.describe('sign-in and session persistence', () => {
   test('an existing account can sign in and the session survives navigation', async ({ page }) => {
     const email = uniqueEmail('persist');
-    await page.goto('/signup', { waitUntil: 'networkidle' });
-    await page.getByLabel('Display name').fill('Persist Tester');
-    await page.getByLabel('Email').fill(email);
-    await page.getByLabel('Password').fill(PASSWORD);
-    await page.getByRole('button', { name: 'Create account' }).click();
-    await page.waitForURL('**/dashboard');
+    await signUpViaUi(page, { displayName: 'Persist Tester', email, password: PASSWORD });
     await page.getByRole('button', { name: 'Sign out' }).click();
     await page.waitForURL('**/login');
 
@@ -132,12 +115,7 @@ test.describe('protected routes', () => {
 
   test('a signed-in traveller visiting /login is redirected to /dashboard', async ({ page }) => {
     const email = uniqueEmail('already-in');
-    await page.goto('/signup', { waitUntil: 'networkidle' });
-    await page.getByLabel('Display name').fill('Already Signed In');
-    await page.getByLabel('Email').fill(email);
-    await page.getByLabel('Password').fill(PASSWORD);
-    await page.getByRole('button', { name: 'Create account' }).click();
-    await page.waitForURL('**/dashboard');
+    await signUpViaUi(page, { displayName: 'Already Signed In', email, password: PASSWORD });
 
     await page.goto('/login', { waitUntil: 'networkidle' });
     await page.waitForURL('**/dashboard');
@@ -147,30 +125,36 @@ test.describe('protected routes', () => {
 test.describe('mobile viewport (390×844)', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test('signup, dashboard and profile pages have no horizontal overflow', async ({ page }) => {
+  async function overflowOf(page: import('@playwright/test').Page): Promise<number> {
+    return page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+  }
+
+  test('signup (both steps), dashboard and profile pages have no horizontal overflow', async ({
+    page,
+  }) => {
     const email = uniqueEmail('mobile');
     await page.goto('/signup', { waitUntil: 'networkidle' });
-    let overflow = await page.evaluate(
-      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    );
-    expect(overflow).toBeLessThanOrEqual(10);
+    expect(await overflowOf(page)).toBeLessThanOrEqual(10);
 
-    await page.getByLabel('Display name').fill('Mobile Tester');
     await page.getByLabel('Email').fill(email);
-    await page.getByLabel('Password').fill(PASSWORD);
-    await page.getByRole('button', { name: 'Create account' }).click();
+    await page.getByLabel(/^Password/).fill(PASSWORD);
+    await page.getByLabel('Confirm password').fill(PASSWORD);
+    await page.getByRole('button', { name: 'Continue' }).click();
+
+    // Step 2 (profile onboarding) — its own, separate screen.
+    await expect(page.getByLabel('Full name')).toBeVisible();
+    expect(await overflowOf(page)).toBeLessThanOrEqual(10);
+
+    await page.getByLabel('Full name').fill('Mobile Tester');
+    await page.getByRole('button', { name: 'Join Wander With Stars' }).click();
     await page.waitForURL('**/dashboard');
 
-    overflow = await page.evaluate(
-      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    );
-    expect(overflow).toBeLessThanOrEqual(10);
+    expect(await overflowOf(page)).toBeLessThanOrEqual(10);
 
     await page.goto('/dashboard/profile', { waitUntil: 'networkidle' });
-    overflow = await page.evaluate(
-      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    );
-    expect(overflow).toBeLessThanOrEqual(10);
+    expect(await overflowOf(page)).toBeLessThanOrEqual(10);
   });
 
   test('the sign-in form is keyboard accessible', async ({ page }) => {

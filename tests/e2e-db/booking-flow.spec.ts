@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import { expect, test } from '@playwright/test';
 
+import { signUpViaUi } from './helpers/signup';
+
 const adminClient = createClient(
   'http://127.0.0.1:54321',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU',
@@ -106,12 +108,7 @@ test.describe('authenticated traveller booking', () => {
   test('a signed-in traveller can complete the booking flow', async ({ page }) => {
     const email = uniqueEmail('auth');
     const password = 'Test-Password-1234!';
-    await page.goto('/signup', { waitUntil: 'networkidle' });
-    await page.getByLabel('Display name').fill('Auth Booker');
-    await page.getByLabel('Email').fill(email);
-    await page.getByLabel('Password').fill(password);
-    await page.getByRole('button', { name: 'Create account' }).click();
-    await page.waitForURL('**/dashboard', { timeout: 15000 });
+    await signUpViaUi(page, { displayName: 'Auth Booker', email, password });
 
     await goToBookingPageForDeparture(page, 1);
     // Contact fields are blank by default even when signed in — the flow

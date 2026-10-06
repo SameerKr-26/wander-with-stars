@@ -1,44 +1,79 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 
-import { Button, Field, Input, Stack, Text } from '@/components/ui';
-import { createTravellerProfileAction } from '@/app/(account)/actions';
+import { completeOnboardingAction } from '@/app/(account)/actions';
+import { Button, Checkbox, Field, Input, Select, Stack, Text } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
-import { signUpSchema } from '@/lib/traveller/validation';
+import {
+  DIETARY_PREFERENCES,
+  profileOnboardingSchema,
+  signUpStep1Schema,
+  TRAVEL_INTERESTS,
+  TRAVEL_STYLES,
+} from '@/lib/traveller/validation';
 
 /**
- * Traveller sign-up.
+ * Traveller sign-up — a two-step "Join the WWS traveller community" flow
+ * (Phase 4.8A), not a single giant form.
  *
- * `supabase.auth.signUp()` runs client-side (the browser client sets the
- * session cookie itself once Supabase confirms the account — the same
- * `@supabase/ssr` cookie handling every other client-side auth call in this
- * project already relies on). `supabase/config.toml`'s
- * `[auth.email] enable_confirmations = false` means this project's local
- * (and, per that same config, deployed) Supabase instance signs the user in
- * immediately — no "check your email" interstitial to build, because there
- * is nothing to wait for. If a deployed environment ever flips that flag on,
- * `signUp`'s response still succeeds without an active session, and the
- * unhandled state below (no redirect) is exactly the safe fallback: this
- * form does not claim a session exists when Supabase hasn't granted one.
+ * Step 1 (account): email/password/confirm — `supabase.auth.signUp()` runs
+ * client-side exactly as before (see the original single-step
+ * implementation's own comment on why: the browser client sets the session
+ * cookie itself, and `enable_confirmations = false` locally means the
+ * session is live immediately, no "check your email" interstitial needed).
  *
- * Profile creation is a separate, explicit server step
- * (`createTravellerProfileAction`) — not a database trigger — so a failure
- * creating the profile surfaces as a real, visible error rather than a
- * silent partial account.
+ * Step 2 (profile): full name (required) plus the optional onboarding
+ * fields, saved via `completeOnboardingAction` — a real, explicit server
+ * step (`lib/traveller/profile.ts`'s `upsertOwnProfile`), not a database
+ * trigger, so a failure surfaces as a visible, retryable error rather than
+ * a silent partial account.
+ *
+ * Safe across a browser refresh or returning later mid-onboarding: on
+ * mount, this checks whether a Supabase session ALREADY exists (the
+ * traveller completed Step 1, then refreshed or navigated away before
+ * Step 2) and jumps straight to Step 2 if so — re-submitting Step 1 for an
+ * already-authenticated email would otherwise fail with "already
+ * registered".
  */
 export function SignupForm() {
   const router = useRouter();
-  const [displayName, setDisplayName] = useState('');
+  const [step, setStep] = useState<'account' | 'profile' | 'checking'>('checking');
+
+  useEffect(() => {
+    let cancelled = false;
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      if (!cancelled) setStep(data.user ? 'profile' : 'account');
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (step === 'checking') return null;
+  if (step === 'account') return <AccountStep onCreated={() => setStep('profile')} />;
+  return (
+    <ProfileStep
+      onComplete={() => {
+        router.push('/dashboard');
+        router.refresh();
+      }}
+    />
+  );
+}
+
+function AccountStep({ onCreated }: { onCreated: () => void }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const parsed = signUpSchema.safeParse({ displayName, email, password });
+    const parsed = signUpStep1Schema.safeParse({ email, password, confirmPassword });
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? 'Check your details and try again.');
       return;
@@ -69,36 +104,21 @@ export function SignupForm() {
 
     if (!data.session) {
       // Email confirmation is required by this environment's Supabase
-      // config — no session exists yet to create a profile against.
+      // config — no session exists yet to continue onboarding with.
       setError('Check your email to confirm your account before signing in.');
       setSubmitting(false);
       return;
     }
 
-    try {
-      await createTravellerProfileAction(parsed.data.displayName);
-    } catch {
-      setError('Your account was created, but we could not set up your profile. Please try again.');
-      setSubmitting(false);
-      return;
-    }
-
-    router.push('/dashboard');
-    router.refresh();
+    onCreated();
   }
 
   return (
     <form onSubmit={handleSubmit}>
       <Stack gap={4}>
-        <Field label="Display name" required>
-          <Input
-            type="text"
-            required
-            autoComplete="name"
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-          />
-        </Field>
+        <Text variant="small" tone="secondary">
+          Step 1 of 2 — create your account
+        </Text>
         <Field label="Email" required>
           <Input
             type="email"
@@ -117,6 +137,15 @@ export function SignupForm() {
             onChange={(e) => setPassword(e.target.value)}
           />
         </Field>
+        <Field label="Confirm password" required>
+          <Input
+            type="password"
+            required
+            autoComplete="new-password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+          />
+        </Field>
         {error ? (
           <Text
             role="alert"
@@ -127,7 +156,151 @@ export function SignupForm() {
           </Text>
         ) : null}
         <Button type="submit" disabled={submitting}>
-          {submitting ? 'Creating account…' : 'Create account'}
+          {submitting ? 'Creating account…' : 'Continue'}
+        </Button>
+      </Stack>
+    </form>
+  );
+}
+
+function ProfileStep({ onComplete }: { onComplete: () => void }) {
+  const [displayName, setDisplayName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [city, setCity] = useState('');
+  const [travelStyle, setTravelStyle] = useState('');
+  const [interests, setInterests] = useState<string[]>([]);
+  const [dietaryPreference, setDietaryPreference] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  function toggleInterest(value: string) {
+    setInterests((current) =>
+      current.includes(value) ? current.filter((v) => v !== value) : [...current, value],
+    );
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const parsed = profileOnboardingSchema.safeParse({
+      displayName,
+      phone: phone.trim() || undefined,
+      city: city.trim() || undefined,
+      travelStyle: travelStyle || undefined,
+      travelInterests: interests.length > 0 ? interests : undefined,
+      dietaryPreference: dietaryPreference || undefined,
+    });
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? 'Check your details and try again.');
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+
+    const result = await completeOnboardingAction(parsed.data);
+    if (!result.ok) {
+      setError(result.errorMessage);
+      setSubmitting(false);
+      return;
+    }
+
+    onComplete();
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <Stack gap={5}>
+        <Stack gap={1}>
+          <Text variant="small" tone="secondary">
+            Step 2 of 2 — tell us about yourself
+          </Text>
+          <Text tone="secondary">
+            Help us tailor WWS trips to you. Everything except your name is optional.
+          </Text>
+        </Stack>
+
+        <Field label="Full name" required>
+          <Input
+            type="text"
+            required
+            autoComplete="name"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+          />
+        </Field>
+
+        <Field label="Phone / WhatsApp" description="Optional.">
+          <Input
+            type="tel"
+            autoComplete="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+          />
+        </Field>
+
+        <Field label="City" description="Optional.">
+          <Input
+            type="text"
+            autoComplete="address-level2"
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+          />
+        </Field>
+
+        <Field label="Preferred travel style" description="Optional.">
+          <Select value={travelStyle} onChange={(e) => setTravelStyle(e.target.value)}>
+            <option value="">No preference</option>
+            {TRAVEL_STYLES.map((style) => (
+              <option key={style} value={style}>
+                {style}
+              </option>
+            ))}
+          </Select>
+        </Field>
+
+        <Stack gap={2}>
+          <Text variant="small" style={{ fontWeight: 'var(--weight-label)' }}>
+            Travel interests{' '}
+            <Text as="span" variant="small" tone="muted">
+              (optional, pick any)
+            </Text>
+          </Text>
+          <div className="grid grid-cols-2" style={{ gap: 'var(--space-2)' }}>
+            {TRAVEL_INTERESTS.map((interest) => (
+              <Checkbox
+                key={interest}
+                label={interest}
+                checked={interests.includes(interest)}
+                onChange={() => toggleInterest(interest)}
+              />
+            ))}
+          </div>
+        </Stack>
+
+        <Field label="Dietary preference" description="Optional.">
+          <Select value={dietaryPreference} onChange={(e) => setDietaryPreference(e.target.value)}>
+            <option value="">Prefer not to say</option>
+            {DIETARY_PREFERENCES.map((preference) => (
+              <option key={preference} value={preference}>
+                {preference}
+              </option>
+            ))}
+          </Select>
+        </Field>
+
+        {error ? (
+          <Text
+            role="alert"
+            variant="small"
+            style={{ color: 'var(--wws-charcoal)', fontWeight: 600 }}
+          >
+            {error}
+          </Text>
+        ) : null}
+
+        <Button type="submit" disabled={submitting}>
+          {submitting ? 'Saving…' : 'Join Wander With Stars'}
         </Button>
       </Stack>
     </form>

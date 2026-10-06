@@ -14,6 +14,8 @@ import {
 } from '@/lib/navigation/site-navigation';
 import { cn } from '@/lib/utils';
 
+import { AccountMenu, type AccountMenuAccount } from './account-menu';
+
 /**
  * Site header — structure and behaviour, not the finished navigation design.
  *
@@ -48,14 +50,25 @@ export interface SiteHeaderProps extends NavContext {
   compactOnScroll?: boolean;
   /** Scroll distance before the header switches to its scrolled state. */
   scrollThreshold?: number;
+  /**
+   * The signed-in traveller's account summary, resolved server-side
+   * (`getTravellerSession()`) by whichever layout renders this header —
+   * never fetched client-side. `null`/`undefined` renders the logged-out
+   * Log in/Sign up control (`AccountMenu`, Phase 4.8A). When provided,
+   * `isAuthenticated` above is derived from it rather than needing to be
+   * passed separately.
+   */
+  account?: AccountMenuAccount | null;
 }
 
 export function SiteHeader({
-  isAuthenticated = false,
+  isAuthenticated,
   items: providedItems,
   compactOnScroll = true,
   scrollThreshold = 24,
+  account = null,
 }: SiteHeaderProps) {
+  const resolvedIsAuthenticated = isAuthenticated ?? account !== null;
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -63,7 +76,8 @@ export function SiteHeader({
   const menuId = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
 
-  const items = providedItems ?? visibleItems(PRIMARY_NAV, { isAuthenticated });
+  const items =
+    providedItems ?? visibleItems(PRIMARY_NAV, { isAuthenticated: resolvedIsAuthenticated });
   const primaryAction = items.find((item) => item.emphasis === 'primary');
   const links = items.filter((item) => item.emphasis !== 'primary');
 
@@ -72,7 +86,11 @@ export function SiteHeader({
      menu button that opens onto nothing — §10 of the modular architecture
      doc: no reserved gaps for features that are not there. */
   const hasNav = links.length > 0;
-  const hasMobileMenu = hasNav || primaryAction !== undefined;
+  // `!account` (Phase 4.8A): a logged-out mobile visitor always has a
+  // "Sign up" CTA inside the mobile panel (see below), even on a page with
+  // no other nav links or primary action — AccountMenu's own compact "Log
+  // in" link stays visible in the bar either way, independent of this.
+  const hasMobileMenu = hasNav || primaryAction !== undefined || !account;
 
   /* Scroll state. Reads are passive and coalesced into an animation frame, so
      a fast scroll cannot queue up layout work on the main thread. */
@@ -160,8 +178,14 @@ export function SiteHeader({
             paddingBlock: 'var(--space-3)',
           }}
         >
-          {/* Wordmark as text. The brand asset is pending replacement and must
-              not be depended on (public/brand/README.md). */}
+          {/* Wordmark as text. A cleaned, genuinely transparent brand SVG now
+              exists at public/brand/wws-logo.svg (Phase 3.7 audit), but its
+              source lockup is white/yellow-on-solid-teal with a stacked
+              "WITH STARS" subline — tested in this header at the ~22px
+              height its padding budget allows, it is not legible against
+              the transparent/light-glass surface here (see the Phase 3.7
+              report). Left as text pending a suitable light-surface or
+              icon-only variant rather than shipping an illegible mark. */}
           <Link
             href="/"
             className="text-text-primary shrink-0"
@@ -194,6 +218,11 @@ export function SiteHeader({
                 {primaryAction.label}
               </LinkButton>
             ) : null}
+
+            {/* Visible at every width — compact by design (a text link when
+                logged out, a small avatar when logged in), so it never
+                competes with the hamburger trigger for space on mobile. */}
+            <AccountMenu account={account} />
 
             {hasMobileMenu ? (
               <button
@@ -249,6 +278,16 @@ export function SiteHeader({
                 <li style={{ marginTop: 'var(--space-3)' }}>
                   <LinkButton href={primaryAction.href} fullWidth>
                     {primaryAction.label}
+                  </LinkButton>
+                </li>
+              ) : null}
+              {/* account's own "Sign up" button is hidden on mobile
+                  (components/layout/account-menu.tsx) — this is its
+                  full-width mobile-panel equivalent, logged-out only. */}
+              {!account ? (
+                <li style={{ marginTop: 'var(--space-3)' }}>
+                  <LinkButton href="/signup" variant="secondary" fullWidth>
+                    Sign up
                   </LinkButton>
                 </li>
               ) : null}

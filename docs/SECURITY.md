@@ -173,6 +173,40 @@ not the service role) and `tests/e2e-db/dashboard.spec.ts` (a traveller
 attempting another's booking detail URL directly). No INSERT/UPDATE/
 DELETE policy was added on either table — this phase remains read-only.
 
+**Implemented (Phase 4.8A)** — global account access & profile
+onboarding: the public site header's account control
+(`components/layout/account-menu.tsx`) is driven by a session resolved
+SERVER-SIDE (`app/(marketing)/layout.tsx`'s `getTravellerSession()` call)
+and passed down as a prop — never a client-side session fetch, so there
+is no flash of the wrong (logged-out) state and no client code that could
+be tricked into trusting a forged "logged in" value. The "Log out" action
+itself mirrors `components/account/sign-out-button.tsx`'s own
+`supabase.auth.signOut()` call exactly — no new sign-out mechanism.
+
+`traveller_profiles`'s five new onboarding columns (`phone`, `city`,
+`travel_style`, `travel_interests`, `dietary_preference`,
+docs/DATABASE.md's own Phase 4.8A entry) needed NO RLS change — the
+existing own-row select/insert/update policies (Phase 4.5) already cover
+every column on the table, these included, since RLS in PostgreSQL is
+row-level, not column-level. Every write goes through
+`lib/traveller/profile.ts`'s `upsertOwnProfile`/`ensureTravellerProfile`,
+both using the session-aware client only, both re-validating with the
+same Zod schema (`lib/traveller/validation.ts`) the client form does.
+Three fields (`travel_style`, `travel_interests`, `dietary_preference`)
+are controlled vocabularies enforced TWICE — the Zod schema rejects an
+arbitrary string before it ever reaches the database, and a SQL CHECK
+constraint is the independent backstop if that application-layer check
+were ever bypassed or had a bug — this phase's own "do not silently
+accept arbitrary invalid enum values from the browser" rule, satisfied at
+both layers rather than trusting either alone. Deliberately never
+collected: Aadhaar, passport number, PAN, card details, bank information,
+emergency contacts — see docs/ARCHITECTURE.md §22 for the brief's own
+explicit instruction. Verified by
+`tests/integration/traveller-profile-onboarding.test.ts` (cross-user
+read/update rejection, controlled-vocabulary rejection, idempotent
+upsert behaviour, all against the real database) and
+`tests/e2e-db/account-access.spec.ts`.
+
 ## 5. RLS
 
 For every protected table answer:

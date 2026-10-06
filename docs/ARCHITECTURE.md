@@ -1428,3 +1428,112 @@ email, or booking UUID — explicitly forbidden by this phase's brief),
 community, personalisation, passport, AI travel assistant, and the full
 traveller payment-history dashboard Phase 4.7 already deferred. All remain
 explicit future work.
+
+## 22. Global account access & traveller profile onboarding (Phase 4.8A)
+
+Two tightly-scoped additions: the public site header now shows real
+account access (previously `isAuthenticated` was hardcoded `false`, and
+the header's own "Log in" nav item had never actually rendered — see
+below), and signup collects genuinely useful profile information across
+two real steps instead of one.
+
+### Global account access
+
+```
+app/(marketing)/layout.tsx (Server Component)
+  -> getTravellerSession()                  the SAME helper /dashboard's
+  -> account = session ? {displayName,      own layout already uses —
+       email} : null                        no new session-reading path
+  -> <SiteHeader account={account} />
+
+components/layout/site-header.tsx
+  -> <AccountMenu account={account} />      rendered unconditionally, at
+                                              every viewport width
+
+components/layout/account-menu.tsx (client)
+  -> account === null: "Log in" + "Sign up" (LoggedOutControl)
+  -> account !== null: avatar button -> dropdown (LoggedInControl)
+       - name, email
+       - My Trips    -> /dashboard
+       - Profile     -> /dashboard/profile
+       - Log out     -> supabase.auth.signOut(), mirrors
+                        components/account/sign-out-button.tsx exactly
+```
+
+`AccountMenu` deliberately bypasses `lib/navigation/site-navigation.ts`'s
+`PRIMARY_NAV`/`IMPLEMENTED_ROUTES`/feature-flag system entirely. That
+system previously carried a `'Log in'` nav item gated on the
+`travellerAccounts` feature flag (default off) AND `IMPLEMENTED_ROUTES`
+(`/login` was never in that allowlist) — meaning it had **never actually
+rendered**, a real, silent gap this phase closes. Rather than flip a flag
+and backfill an allowlist entry for a generic nav item, account access is
+its own dedicated control, driven directly by the real server-resolved
+session, exactly matching the brief's "visible unconditionally, now" — see
+`lib/navigation/site-navigation.ts`'s own updated comment for the full
+reasoning.
+
+A consequence worth naming honestly: every page `app/(marketing)/layout.tsx`
+wraps (`/`, `/trips`, `/trips/all`, every trip detail page, `/about`,
+`/stories`, `/creators`, `/contact`) changed from statically prerendered
+(`○`) to server-rendered-per-request (`ƒ`) in the production build output,
+because `getTravellerSession()` reads the request's own cookies — a
+per-request operation Next.js cannot prerender ahead of time. This is the
+correct, necessary tradeoff for a real session-aware header, not a
+regression; no visible content or behaviour changed, only the rendering
+strategy. A future phase could reintroduce static rendering for the
+cookie-independent parts of these pages (e.g. via a client-side account
+widget that fetches session state after the static shell loads) if that
+tradeoff ever needs revisiting — not attempted here, to keep this phase's
+diff to exactly what it set out to do.
+
+### Signup onboarding — two real steps
+
+```
+components/account/signup-form.tsx (client)
+  Step 1 (account): email / password / confirm password
+    -> supabase.auth.signUp() (unchanged client-side mechanism)
+  Step 2 (profile): full name (required) + phone/city/travel style/
+                     travel interests/dietary preference (all optional)
+    -> completeOnboardingAction()  (app/(account)/actions.ts)
+    -> lib/traveller/profile.ts's upsertOwnProfile()
+    -> redirect to /dashboard
+```
+
+Safe across a browser refresh or returning later mid-onboarding: on
+mount, `SignupForm` checks whether a Supabase session already exists
+(the traveller finished Step 1, then refreshed or navigated away before
+Step 2) and jumps straight to Step 2 — re-submitting Step 1 for an
+already-authenticated email would otherwise fail with "already
+registered."
+
+`upsertOwnProfile` is a genuine upsert (`onConflict: 'user_id'`, no
+`ignoreDuplicates`), not the narrower `ensureTravellerProfile` fallback
+`/dashboard`'s own layout still uses for a profile-less signed-in user —
+the two are deliberately different operations: `upsertOwnProfile` always
+overwrites with the full submitted form state (correct for both Step 2
+and later profile edits, where a resubmission must converge on the same
+stored state), while `ensureTravellerProfile` must never reset a real
+existing profile's fields back to empty just because it was defensively
+called again.
+
+### Profile data model
+
+Extends `traveller_profiles` (Phase 4.5) rather than creating a second
+table — "Full name" IS the existing `display_name` column, not a
+duplicate. New nullable columns: `phone`, `city`, `travel_style`,
+`travel_interests` (`text[]`, defaults to `{}`), `dietary_preference`.
+Three controlled vocabularies (`travel_style`, `travel_interests`,
+`dietary_preference`) are enforced by a SQL CHECK constraint against an
+explicit value list — mirrored exactly in
+`lib/traveller/validation.ts`'s `TRAVEL_STYLES`/`TRAVEL_INTERESTS`/
+`DIETARY_PREFERENCES` constants, the same two-layer-enforcement
+discipline `lib/booking/status.ts` already established. No RLS change
+was needed: the existing own-row select/insert/update policies (Phase
+4.5) already cover every column on the table, new ones included — RLS is
+row-level, not column-level. See docs/DATABASE.md §4's Phase 4.8A entry
+for the exact SQL and docs/SECURITY.md's own entry for the full
+authorization reasoning.
+
+Deliberately never collected: Aadhaar, passport number, PAN, card
+details, bank information, emergency contacts — not added "because they
+might be useful later," per the brief's own explicit instruction.

@@ -1,14 +1,23 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  citySchema,
+  DIETARY_PREFERENCES,
+  dietaryPreferenceSchema,
   displayNameSchema,
   emailSchema,
   forgotPasswordSchema,
   passwordSchema,
+  phoneSchema,
+  profileOnboardingSchema,
   profileUpdateSchema,
   resetPasswordSchema,
   signInSchema,
-  signUpSchema,
+  signUpStep1Schema,
+  TRAVEL_INTERESTS,
+  travelInterestsSchema,
+  TRAVEL_STYLES,
+  travelStyleSchema,
 } from '@/lib/traveller/validation';
 
 /**
@@ -61,21 +70,118 @@ describe('displayNameSchema', () => {
   });
 });
 
-describe('signUpSchema', () => {
-  it('accepts a valid signup submission', () => {
+describe('signUpStep1Schema', () => {
+  it('accepts a valid Step 1 submission (email, password, matching confirmation)', () => {
     expect(
-      signUpSchema.safeParse({
+      signUpStep1Schema.safeParse({
         email: 'new@example.com',
         password: 'abcdef',
-        displayName: 'New Traveller',
+        confirmPassword: 'abcdef',
       }).success,
     ).toBe(true);
   });
 
-  it('rejects an invalid field combination', () => {
-    expect(signUpSchema.safeParse({ email: 'bad', password: '123', displayName: '' }).success).toBe(
-      false,
-    );
+  it('rejects mismatched password confirmation', () => {
+    const result = signUpStep1Schema.safeParse({
+      email: 'new@example.com',
+      password: 'abcdef',
+      confirmPassword: 'different',
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0]?.path).toEqual(['confirmPassword']);
+    }
+  });
+
+  it('rejects an invalid email or too-short password', () => {
+    expect(
+      signUpStep1Schema.safeParse({ email: 'bad', password: '123', confirmPassword: '123' })
+        .success,
+    ).toBe(false);
+  });
+});
+
+describe('profileOnboardingSchema (signup Step 2)', () => {
+  it('accepts just a full name — every other field is optional', () => {
+    expect(profileOnboardingSchema.safeParse({ displayName: 'New Traveller' }).success).toBe(true);
+  });
+
+  it('accepts a fully filled-in submission', () => {
+    expect(
+      profileOnboardingSchema.safeParse({
+        displayName: 'New Traveller',
+        phone: '+91 98765 43210',
+        city: 'Mumbai',
+        travelStyle: 'Adventure',
+        travelInterests: ['Beaches', 'Food'],
+        dietaryPreference: 'Vegetarian',
+      }).success,
+    ).toBe(true);
+  });
+
+  it('rejects a missing full name', () => {
+    expect(profileOnboardingSchema.safeParse({ displayName: '' }).success).toBe(false);
+  });
+
+  it('rejects a controlled-vocabulary value outside the allowed set — never silently accepted', () => {
+    expect(
+      profileOnboardingSchema.safeParse({
+        displayName: 'New Traveller',
+        travelStyle: 'Extreme Sports',
+      }).success,
+    ).toBe(false);
+    expect(
+      profileOnboardingSchema.safeParse({
+        displayName: 'New Traveller',
+        dietaryPreference: 'Keto',
+      }).success,
+    ).toBe(false);
+    expect(
+      profileOnboardingSchema.safeParse({
+        displayName: 'New Traveller',
+        travelInterests: ['Skydiving'],
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe('travelStyleSchema / travelInterestsSchema / dietaryPreferenceSchema', () => {
+  it('every documented travel style is accepted', () => {
+    for (const style of TRAVEL_STYLES) {
+      expect(travelStyleSchema.safeParse(style).success).toBe(true);
+    }
+  });
+
+  it('every documented dietary preference is accepted', () => {
+    for (const preference of DIETARY_PREFERENCES) {
+      expect(dietaryPreferenceSchema.safeParse(preference).success).toBe(true);
+    }
+  });
+
+  it('travel interests accepts multiple valid selections', () => {
+    expect(travelInterestsSchema.safeParse([...TRAVEL_INTERESTS]).success).toBe(true);
+  });
+});
+
+describe('phoneSchema', () => {
+  it('accepts a plausible international number', () => {
+    expect(phoneSchema.safeParse('+91 98765 43210').success).toBe(true);
+    expect(phoneSchema.safeParse('(123) 456-7890').success).toBe(true);
+  });
+
+  it('rejects letters and obviously malformed values', () => {
+    expect(phoneSchema.safeParse('not a phone').success).toBe(false);
+    expect(phoneSchema.safeParse('123').success).toBe(false);
+  });
+});
+
+describe('citySchema', () => {
+  it('accepts a normal city name', () => {
+    expect(citySchema.safeParse('Mumbai').success).toBe(true);
+  });
+
+  it('rejects an empty city', () => {
+    expect(citySchema.safeParse('').success).toBe(false);
   });
 });
 
@@ -100,7 +206,8 @@ describe('forgotPasswordSchema / resetPasswordSchema / profileUpdateSchema', () 
     expect(resetPasswordSchema.safeParse({ password: 'abc' }).success).toBe(false);
   });
 
-  it('profileUpdateSchema enforces the same display-name rule as signup', () => {
+  it('profileUpdateSchema is profileOnboardingSchema reused, not a second near-identical schema', () => {
+    expect(profileUpdateSchema).toBe(profileOnboardingSchema);
     expect(profileUpdateSchema.safeParse({ displayName: 'Jordan' }).success).toBe(true);
     expect(profileUpdateSchema.safeParse({ displayName: '' }).success).toBe(false);
   });

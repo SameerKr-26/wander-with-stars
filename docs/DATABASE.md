@@ -85,6 +85,53 @@ make implicitly) — see docs/SECURITY.md §4's traveller-authentication
 entry for the full RLS reasoning, and `lib/traveller/` for the
 server-side code that relies on it.
 
+**Extended (Phase 4.8A)** —
+`supabase/migrations/20261001090000_extend_traveller_profiles.sql`. Five
+new nullable columns, added to this SAME table rather than a second one:
+`phone` (text), `city` (text), `travel_style` (text), `travel_interests`
+(`text[]`, `not null default '{}'` — never null, so a caller never needs
+a null-check before iterating it), `dietary_preference` (text).
+`display_name` is unchanged and remains "Full name" — no duplicate
+full-name column was added.
+
+```sql
+alter table public.traveller_profiles
+  add constraint traveller_profiles_travel_style_check
+  check (travel_style is null or travel_style in (
+    'Adventure', 'Relaxation', 'Backpacking', 'Cultural',
+    'Nightlife', 'Luxury', 'Nature', 'Photography'
+  ));
+
+alter table public.traveller_profiles
+  add constraint traveller_profiles_dietary_preference_check
+  check (dietary_preference is null or dietary_preference in (
+    'No preference', 'Vegetarian', 'Vegan', 'Jain', 'Other'
+  ));
+
+alter table public.traveller_profiles
+  add constraint traveller_profiles_travel_interests_check
+  check (travel_interests <@ array[
+    'Beaches', 'Mountains', 'Food', 'Culture',
+    'Parties / nightlife', 'Wildlife', 'Photography', 'Road trips'
+  ]::text[]);
+```
+
+`travel_style`/`dietary_preference` are plain `text` with a CHECK against
+an explicit value list — a controlled single-select, not a free-text
+field and not a Postgres enum type (an enum would need its own migration
+to add a future value; a CHECK constraint is a one-line `alter
+constraint` instead). `travel_interests` is a `text[]` validated by the
+array-containment operator (`<@`) in one CHECK — the brief's own "do not
+introduce unnecessary normalisation or a complex preference subsystem"
+instruction ruled out a junction table for what is, in practice, a small
+fixed set of tags. `phone`/`city` are unconstrained free text (each with
+only a "non-empty if present" CHECK, matching `bookings.contact_phone`'s
+own existing pattern) — a controlled list makes no sense for either.
+
+No RLS change: the existing own-row select/insert/update policies above
+already cover every column on this table, these five included — RLS is
+row-level, not column-level.
+
 ## 3. Travel catalogue
 
 **Implemented (Phase 4.1) and verified against a real database (Phase 4.2A)**
