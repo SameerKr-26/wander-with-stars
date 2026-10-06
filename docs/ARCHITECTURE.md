@@ -1326,3 +1326,105 @@ Invoices, coupons, instalments, subscriptions, any finance/admin
 dashboard, a booking-admin surface, a traveller payment-history view,
 notifications (email/WhatsApp/SMS) of any kind. All remain explicit future
 work.
+
+## 21. Traveller dashboard & My Trips (Phase 4.8)
+
+Turns `/dashboard` from Phase 4.5's minimal account landing into a real
+"My Trips" surface, reading the booking/payment domain Phases 4.4–4.7
+already built — no new booking write path, no new payment logic. Entirely
+read-only.
+
+### Architecture
+
+```
+app/dashboard/page.tsx                    "My Trips" — greeting, hero
+  |                                       upcoming trip, Upcoming/Past/
+  |                                       Cancelled lists, empty state
+  v
+lib/dashboard/repository.ts               session-aware reads ONLY
+  |  fetchTravellerBookingGroups()        (lib/supabase/server.ts — never
+  |  fetchTravellerBookingDetail()        lib/supabase/admin.ts)
+  v
+lib/dashboard/grouping.ts                 pure, unit-tested:
+  |  classifyBooking() / groupBookings()  upcoming/past/cancelled
+  |  pickAuthoritativePayment()           classification + the single
+  v                                       "authoritative payment" rule
+Supabase (RLS: auth.uid() = bookings.traveller_id,
+          extended this phase to booking_participants/payments
+          via a join back to their parent booking)
+
+app/dashboard/bookings/[bookingId]/page.tsx
+  -> fetchTravellerBookingDetail(bookingId, session.userId)
+  -> independently re-checks row.traveller_id === session.userId,
+     on top of the RLS policy that already scoped the query
+```
+
+### Ownership model
+
+Every read goes through `lib/supabase/server.ts`'s session-aware client,
+never the service role — this phase's own explicit "ordinary traveller
+dashboard reads never use the service role" rule. RLS
+(`auth.uid() = bookings.traveller_id`) is the actual database-level
+boundary; `fetchTravellerBookingDetail` additionally re-checks the
+returned row's `traveller_id` against the caller's own session id before
+returning anything — belt and suspenders, satisfying the brief's own
+"every booking detail read must independently verify ownership, do not
+trust the booking ID supplied by the browser" requirement literally, not
+just by relying on RLS alone. A booking that doesn't exist, isn't this
+traveller's, or is a guest booking (`traveller_id is null`, which can
+never equal a real `auth.uid()`) are all the same indistinguishable 404 —
+never a response that would confirm to an attacker that a given booking
+ID exists at all.
+
+### RLS extension (the one migration this phase adds)
+
+`booking_participants` and `payments` have had RLS enabled with ZERO
+policies since Phase 4.4 — nothing read either table back until now.
+`20260930090000_create_traveller_dashboard_reads.sql` adds exactly one
+SELECT policy to each, both shaped identically: a row is visible only
+when its PARENT booking's `traveller_id` is the current `auth.uid()`.
+PostgREST's nested embedding (`bookings.select('*, booking_participants(*),
+payments(*))')`, used by both repository functions) requires SELECT
+permission on the embedded table itself, not just the parent — without
+this, an embedded read would have silently returned an empty array rather
+than erroring, which would have looked like "no participants" rather than
+"not allowed to see this." No INSERT/UPDATE/DELETE policy is added on
+either table — this phase is read-only for booking data, and every
+existing write path (`create_pending_booking`, `record_payment_result`)
+already goes through the service-role client, unaffected by these
+SELECT-only grants.
+
+### Grouping & the authoritative payment record
+
+`lib/dashboard/grouping.ts` is pure, dependency-free TypeScript, unit
+tested directly with no database or mock involved. `classifyBooking`:
+`cancelled` always wins regardless of date; `completed` is always `past`;
+everything else is classified purely by date (today counts as upcoming).
+`pickAuthoritativePayment` is this phase's answer to "payment status must
+come from the authoritative payment record, never inferred from booking
+state, checkout state, or cached UI state": given a booking's full payment
+history (possibly several rows, after retries), a `succeeded` row always
+wins — once one exists, `createPaymentOrder` (Phase 4.7) refuses to create
+a further order against a non-pending booking, so nothing can legitimately
+follow it — otherwise the most recently created attempt reflects the
+booking's true current state (still pending, or its most recent failure).
+
+### Historical accuracy
+
+Every value the dashboard and booking-detail page show (trip title,
+destination, dates, price, currency) comes from `bookings`'s own
+commercial snapshot fields, fixed at booking time since Phase 4.4/4.6 —
+never re-read from `trips`/`trip_departures`. The "current trip page" link
+(`snapshot_trip_slug` → `/trips/[slug]`) is a deliberate, clearly separate
+link to live content, not a re-fetch of the booking's own historical
+facts. Verified by an integration test that edits a trip's title after
+booking and confirms the traveller's own dashboard read is unaffected.
+
+### What is deliberately NOT built
+
+Cancellation UI, refunds, invoices, notifications, admin booking
+controls, payment mutation UI, guest-booking claiming (by reference,
+email, or booking UUID — explicitly forbidden by this phase's brief),
+community, personalisation, passport, AI travel assistant, and the full
+traveller payment-history dashboard Phase 4.7 already deferred. All remain
+explicit future work.

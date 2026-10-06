@@ -149,6 +149,30 @@ idempotency/amount-verification guarantees, and
 `tests/integration/payment-flow.test.ts` /
 `tests/e2e-db/webhook.spec.ts` for the tests verifying them.
 
+**Implemented (Phase 4.8)** — traveller dashboard & My Trips: the first
+feature to read `booking_participants` and `payments` back at all, and it
+does so through the ordinary session-aware client
+(`lib/supabase/server.ts`) under RLS, never the service role — satisfying
+this phase's own explicit "ordinary traveller dashboard reads never use
+the service role" rule. Two new SELECT policies
+(`20260930090000_create_traveller_dashboard_reads.sql`, docs/DATABASE.md
+§4's Phase 4.8 entry has the exact SQL) extend `bookings`'s own Phase 4.6
+ownership rule one join deep: a `booking_participants`/`payments` row is
+visible only when its parent booking's `traveller_id` matches
+`auth.uid()`. `lib/dashboard/repository.ts` additionally re-checks the
+returned row's `traveller_id` against the caller's own session id before
+returning anything to the page — the brief's own "every booking detail
+read must independently verify ownership, do not trust the booking ID
+supplied by the browser" requirement, satisfied as defense-in-depth on
+top of RLS, not instead of it. A booking that doesn't exist, belongs to
+another traveller, or is a guest booking (`traveller_id is null`, which
+can never equal a real `auth.uid()`) are all the same indistinguishable
+404. Verified by `tests/integration/traveller-dashboard.test.ts` (direct
+cross-user and guest-booking RLS checks, using a real signed-in client,
+not the service role) and `tests/e2e-db/dashboard.spec.ts` (a traveller
+attempting another's booking detail URL directly). No INSERT/UPDATE/
+DELETE policy was added on either table — this phase remains read-only.
+
 ## 5. RLS
 
 For every protected table answer:

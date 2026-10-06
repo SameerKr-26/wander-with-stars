@@ -728,3 +728,31 @@ reasoning, including why this is deliberately not a "reference alone
 grants access" model). Every WRITE still goes exclusively through
 `create_pending_booking()` via the service-role client — this phase adds
 one read policy, zero write policies.
+
+**Implemented (Phase 4.8)**: the traveller dashboard is the first real
+reader of `booking_participants` and `payments` — the gap the Phase 4.6
+note above left open. Two new SELECT policies
+(`20260930090000_create_traveller_dashboard_reads.sql`), shaped
+identically to `bookings`'s own policy above, just one join away:
+
+```sql
+create policy "a traveller can read their own booking's payments"
+  on public.payments
+  for select
+  to authenticated
+  using (
+    exists (
+      select 1 from public.bookings b
+      where b.id = payments.booking_id
+        and b.traveller_id = auth.uid()
+    )
+  );
+```
+
+(`booking_participants` gets the identical shape, substituting its own
+`booking_id`.) A row is visible only when its PARENT booking belongs to
+the authenticated user — a guest booking's participants/payment can never
+match for any real `auth.uid()`. Still zero INSERT/UPDATE/DELETE
+policies on either table; this phase remains read-only, and every write
+path (`create_pending_booking`, `record_payment_result`) is unaffected,
+since both already use the service-role client.
